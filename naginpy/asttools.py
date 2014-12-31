@@ -4,12 +4,15 @@ import astor
 
 def ast_repr(obj):
     if isinstance(obj, ast.AST):
-        return(astor.to_source(obj))
+        obj_class = obj.__class__.__name__
+        source =  astor.to_source(obj)
+        return('ast.{obj_class}: {source}'.format(**locals()))
     if isinstance(obj, list):
         return([ast_repr(o) for o in obj])
+    return obj
 
-def ast_print(obj):
-    print(ast_repr(obj))
+def ast_print(*objs):
+    print(*list(ast_repr(obj) for obj in objs))
 
 def replace_node(parent, field, i, new_node):
     if i is None:
