@@ -1,6 +1,7 @@
 import ast
+from functools import partial
 
-from .graph import TriggerGrapher
+from .graph import GatherGrapher
 from .asttools import ast_repr, _eval
 
 class EvalEvent(object):
@@ -22,12 +23,11 @@ class SpecialEval(object):
     def __init__(self, grapher, ns):
         # grapher might be source string or ast
         if isinstance(grapher, (ast.AST, str)):
-            grapher = TriggerGrapher(grapher)
+            grapher = GatherGrapher(grapher)
 
         self.grapher = grapher
         self.ns = ns
         self._debug = False
-
 
     def set_debug(self, debug=True):
         self._debug = debug
@@ -50,6 +50,9 @@ class SpecialEval(object):
         return self._iter
 
     def _process(self):
+        if not self.grapher._processed:
+            self.grapher.process()
+
         for line in self.grapher.code.body:
             yield from filter(None, self.process_line(line))
 
@@ -58,7 +61,7 @@ class SpecialEval(object):
 
     def should_handle(self, node, ns=None):
         """
-        Does this load_name var trigger special eval?
+        Does this load_name var gather special eval?
         """
         if ns is None:
             ns = self.ns
@@ -70,25 +73,44 @@ class SpecialEval(object):
 
         yield self.debug(line, "Start Processing")
 
-        if not line in grapher.trigger_nodes:
+        if not line in grapher.gather_nodes:
             res = _eval(line, ns)
-            yield self.debug(line, "Evaled. No Trigger Nodes", res)
+            yield self.debug(line, "Evaled. No gather Nodes", res)
             return
 
-        names = grapher.load_names[line]
-        func = partial(is_deferred, ns=ns)
-        deferred = list(filter(func, names))
-        if not any(deferred):
+        nodes = grapher.gather_nodes[line]
+        func = partial(self.should_handle, ns=ns)
+
+        triggered = list(filter(func, nodes))
+        if not any(triggered):
             res = _eval(line, ns)
             yield self.debug(line, "Objects in namespace were unhandled", res)
             return
 
-        print("Starting processing ", ast_repr(names)) 
-        # these are the deferred
-        for node in reversed(deferred):
+        yield self.debug(line, "Handling triggered nodes")
 
+        self.process_triggered(triggered, line)
+        self.cleanup_line(line)
+
+    def cleanup_line(self, line):
+        ns = self.ns
+        obj = _eval(line, ns)
+        return obj
+
+    def handle_up(self, obj, node, parent, field):
+        return False
+
+    def process_triggered(self, triggered, line):
+        grapher = self.grapher
+        ns = self.ns
+
+        for node in reversed(triggered):
+            pass
+
+    def _process_trigger(self, obj, node):
             obj = ns[node.id]
 
+            # climb up
             while True:
                 try:
                     parent, field, i = grapher.parent(node)
@@ -99,19 +121,12 @@ class SpecialEval(object):
                 if obj is None:
                     break
 
-                if not defer_handled(obj, node, parent, field):
+                if not self.handle_up(obj, node, parent, field):
                     break
 
                 obj = _eval(parent, ns)
-                print(obj)
                 node = parent
 
             parent, field, i = grapher.parent(node)
             new_node = ast.Str(s=repr(obj), lineno=1, col_offset=3)
             replace_node(parent, field, i, new_node)
-            print('done loop', ast_repr(node), ast.dump(node))
-            print('done loop', ast_repr(parent), ast.dump(parent))
-
-        obj = _eval(line, ns)
-        return
-        yield

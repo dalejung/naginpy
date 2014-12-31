@@ -20,9 +20,13 @@ class AstGrapher(object):
         if isinstance(code, str):
             code = ast.parse(code)
         self.code = code
+        self._processed = False
 
     def process(self):
+        if self._processed:
+            raise Exception('Grapher has already processed code')
         self.visit(self.code)
+        self._processed = True
 
     def visit(self, node):
         method = 'visit_' + node.__class__.__name__
@@ -59,10 +63,14 @@ def is_load_name(node):
     if isinstance(node.ctx, ast.Load):
         return True
 
-class TriggerGrapher(AstGrapher):
+class GatherGrapher(AstGrapher):
+    """
+    Adds the ability to gather nodes based on a certian condition.
+    """
+
     def __init__(self, *args, **kwargs):
-        self.trigger_check = kwargs.pop('trigger_check', is_load_name)
-        self.trigger_nodes = {}
+        self.gather_check = kwargs.pop('gather_check', is_load_name)
+        self.gather_nodes = {}
         self.line = None
 
         super().__init__(*args, **kwargs)
@@ -75,8 +83,6 @@ class TriggerGrapher(AstGrapher):
 
     def visit(self, node):
         # check for load name. vars that grab from context
-        if self.trigger_check(node):
-            self.trigger_nodes.setdefault(self.line, []).append(node)
+        if self.gather_check(node):
+            self.gather_nodes.setdefault(self.line, []).append(node)
         super().visit(node)
-
-
