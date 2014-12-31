@@ -1,8 +1,8 @@
-from . import defer
+from .. import defer
 import imp;
 imp.reload(defer)
-from .defer import *
-from .special_eval import SpecialEval
+from ..defer import *
+from ..special_eval import SpecialEval
 
 class Dale:
     def _handle_defer(self, type, arg, *args, **kwargs):

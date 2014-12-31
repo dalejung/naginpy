@@ -1,8 +1,10 @@
 import ast
 from functools import partial
 
-from .graph import GatherGrapher
-from .asttools import ast_repr, _eval
+from ..graph import GatherGrapher
+from ..asttools import ast_repr, _eval
+
+_missing = object()
 
 class EvalEvent(object):
     def __init__(self, code, msg, obj=None):
@@ -20,13 +22,14 @@ class EvalEvent(object):
         return "{code_repr} {msg} obj={obj}".format(**locals())
 
 class SpecialEval(object):
-    def __init__(self, grapher, ns):
+    def __init__(self, grapher, ns, engines=None):
         # grapher might be source string or ast
         if isinstance(grapher, (ast.AST, str)):
             grapher = GatherGrapher(grapher)
 
         self.grapher = grapher
         self.ns = ns
+        self.engines = engines
         self._debug = False
 
     def set_debug(self, debug=True):
@@ -53,30 +56,53 @@ class SpecialEval(object):
         if not self.grapher._processed:
             self.grapher.process()
 
-        for line in self.grapher.code.body:
-            yield from filter(None, self.process_line(line))
+        for engine in self.engines:
+            for line in self.grapher.code.body:
+                yield from filter(None, self.process_line(line, engine))
 
     def __next__(self):
         return next(iter(self))
 
-    def should_handle(self, node, ns=None):
-        """
-        Does this load_name var gather special eval?
-        """
-        if ns is None:
-            ns = self.ns
-        raise NotImplementedError('Subclass needs to define should_handle')
-
-    def process_line(self, line):
+    def process_line(self, line, engine):
         grapher = self.grapher
         ns = self.ns
 
         yield self.debug(line, "Start Processing")
 
-        if not line in grapher.gather_nodes:
-            res = _eval(line, ns)
-            yield self.debug(line, "Evaled. No gather Nodes", res)
+        load_names = grapher.gather_nodes.get(line, None)
+
+        if not engine.should_handle_line(line, load_names):
+            yield self.debug(line, "{engine} does not handle line"
+                             "".format(engine=repr(engine)))
             return
+
+        for node in reversed(load_names):
+            obj = ns.get(node.id, _missing)
+
+            while True:
+                try:
+                    parent, field, i = grapher.parent(node)
+                except:
+                    break
+
+                if not engine.should_handle_node(obj, node, parent, field, line):
+                    break
+
+                new_node = engine.handle_node(obj, node, parent, field, line)
+
+                if not isinstance(new_node, ast.AST) and new_node is not None:
+                    raise Exception("Return handle_node should be None or"
+                                    " ast.AST. Return same AST node for no op")
+
+                # replace node value
+                if new_node is not node:
+                    parent, field, i = grapher.parent(node)
+                    replace_node(parent, field, i, new_node)
+                node = parent
+
+
+        res = engine.line_postprocess(line, ns)
+        return
 
         nodes = grapher.gather_nodes[line]
         func = partial(self.should_handle, ns=ns)
@@ -91,42 +117,3 @@ class SpecialEval(object):
 
         self.process_triggered(triggered, line)
         self.cleanup_line(line)
-
-    def cleanup_line(self, line):
-        ns = self.ns
-        obj = _eval(line, ns)
-        return obj
-
-    def handle_up(self, obj, node, parent, field):
-        return False
-
-    def process_triggered(self, triggered, line):
-        grapher = self.grapher
-        ns = self.ns
-
-        for node in reversed(triggered):
-            pass
-
-    def _process_trigger(self, obj, node):
-            obj = ns[node.id]
-
-            # climb up
-            while True:
-                try:
-                    parent, field, i = grapher.parent(node)
-                except:
-                    print("Could not find parent for "+ast_repr(node))
-                    break
-
-                if obj is None:
-                    break
-
-                if not self.handle_up(obj, node, parent, field):
-                    break
-
-                obj = _eval(parent, ns)
-                node = parent
-
-            parent, field, i = grapher.parent(node)
-            new_node = ast.Str(s=repr(obj), lineno=1, col_offset=3)
-            replace_node(parent, field, i, new_node)

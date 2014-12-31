@@ -3,7 +3,7 @@ from functools import partial
 
 import astor
 
-from .asttools import ast_repr, ast_print, replace_node, _eval
+from ..asttools import ast_repr, ast_print, replace_node, _eval
 
 def handles_defer(obj, node, parent, field):
     """
