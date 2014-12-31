@@ -103,17 +103,3 @@ class SpecialEval(object):
 
         res = engine.line_postprocess(line, ns)
         return
-
-        nodes = grapher.gather_nodes[line]
-        func = partial(self.should_handle, ns=ns)
-
-        triggered = list(filter(func, nodes))
-        if not any(triggered):
-            res = _eval(line, ns)
-            yield self.debug(line, "Objects in namespace were unhandled", res)
-            return
-
-        yield self.debug(line, "Handling triggered nodes")
-
-        self.process_triggered(triggered, line)
-        self.cleanup_line(line)
