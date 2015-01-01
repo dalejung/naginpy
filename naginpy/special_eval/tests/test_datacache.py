@@ -21,12 +21,21 @@ class CacheEntry(object):
         self.exec_time = None
         self.executed = False
 
+    def source_hash(self):
+        return hash(ast_source(self.code))
+
     def __hash__(self):
-        return hash(ns_hashkey(self.context)) + hash(ast_source(self.code))
+        return hash(ns_hashkey(self.context)) + self.source_hash()
 
     def __eq__(self, other):
         if isinstance(other, CacheEntry):
             return hash(self) == hash(other)
+
+        # tuple(hash(source), dict)
+        if isinstance(other[0], int):
+            return ast_source(sef.code) == other[0] \
+                    and hash(ns_hashkey(self.context)) == ns_hashkey(other[1])
+
         # assume tuple(code, context)
         return ast_source(sef.code) == ast_source(other[0]) \
                 and hash(ns_hashkey(self.context)) == ns_hashkey(other[1])
@@ -44,15 +53,29 @@ class DeferManager(object):
         cache_entry = self.cache.setdefault(cache_entry, cache_entry)
         return cache_entry
 
-    def value(self, source, **kwargs):
-        print(source, kwargs)
+    def value(self, source_hash, **kwargs):
+        entry = self.cache.get(tuple(source_hash, ns_hashkey(kwargs)))
+        return entry.value
 
-    def generate_getter_node(self, source, context):
+    def generate_getter_node(self, source_hash, context=None):
+        if isinstance(source_hash, str):
+            source_hash = hash(source_hash)
+
+        if isinstance(source_hash, CacheEntry):
+            entry = source_hash
+            context = entry.context
+            source_hash = entry.source_hash()
+
+        assert isinstance(source_hash, int)
+        return self._generate_getter_node(source_hash, context)
+
+    def _generate_getter_node(self, source_hash, context):
+
         func = ast.Attribute(
             value=ast.Name(id="defer_manager", ctx=ast.Load()),
             attr="value", ctx=ast.Load()
         )
-        args = [ast.Num(n=hash(source))]
+        args = [ast.Num(n=source_hash)]
         keywords = [ast.keyword(
             arg=k,
             value=ast.Name(id=k, ctx=ast.Load()))
@@ -62,13 +85,6 @@ class DeferManager(object):
         getter = ast.Call(func=func, args=args, keywords=keywords, 
                           starargs=None, kwargs=None)
         return ast.fix_missing_locations(getter)
-
-
-dm = DeferManager()
-blah = ast.parse("defer_manager.value(123423214132, bob=bob, frank=frank)")
-func = dm.generate_getter_node("dale", {'hi':'hi'})
-
-_eval(func, {'defer_manager':dm, 'hi':'hi2'})
 
 class DataCacheEngine(Engine):
     def __init__(self, defer_manager):
@@ -102,18 +118,27 @@ class DataCacheEngine(Engine):
         return node
 
     def post_node_loop(self, line, ns):
-        ns['defer_manager'] = self.defer_manager
+        dm = self.defer_manager
+        ns['defer_manager'] = dm
         is_load_name = lambda n: isinstance(n, ast.Name) \
                 and isinstance(n.ctx, ast.Load)
 
         for node, context in sections.items():
             names = set(n.id for n in filter(is_load_name, ast.walk(node)))
             ns_context = {k: ns[k] for k in names}
-            entry = self.defer_manager.get(node, ns_context)
+            entry = dm.get(node, ns_context)
             with Timer(verbose=False) as t:
-                _eval(entry.code, ns)
+                res = _eval(entry.code, ns)
+            entry.value = res
             entry.exec_time = t.interval
             entry.executed = True
+            new_node = dm.generate_getter_node(entry)
+            replace_node(
+                context.parent,
+                context.field,
+                context.field_index,
+                new_node
+            )
 
 
     def line_postprocess(self, line, ns):
@@ -121,7 +146,7 @@ class DataCacheEngine(Engine):
 
 
 text = """
-res = pd.rolling_sum(df.iloc[df.a > df.bob.tail()], 5)
+res = pd.rolling_sum(df, 5) + df.bob
 """
 #pd.bob.rolling_sum(df + 1)
 
@@ -132,7 +157,7 @@ class Dale(object):
 
 import pandas as pd
 import numpy as np
-df = pd.DataFrame(np.random.randn(3,3), columns=list('abc'))
+df = pd.DataFrame(np.random.randn(30, 3), columns=['a', 'bob', 'c'])
 dale = Dale()
 ns = {}
 ns['dale'] = dale

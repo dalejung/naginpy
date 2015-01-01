@@ -91,11 +91,12 @@ class NodeContext(object):
     # not every ast node has a referring python obj
     _invalid = object()
 
-    def __init__(self, node, parent, child, field, line, ns, mgr):
+    def __init__(self, node, parent, child, field, field_index, line, ns, mgr):
         self.node = node
         self.parent = parent
         self.child = child
         self.field = field
+        self.field_index = field_index
         self.line = line
         self.ns = ns
         self.mgr = mgr
@@ -183,7 +184,7 @@ class SpecialEval(object):
         child = None
         while True:
             try:
-                parent, field, i = grapher.parent(node)
+                parent, field, field_index = grapher.parent(node)
             except:
                 break
 
@@ -194,6 +195,7 @@ class SpecialEval(object):
                                                     parent,
                                                     child,
                                                     field,
+                                                    field_index,
                                                     line)
             if not engine.should_handle_node(node, context):
                 break
