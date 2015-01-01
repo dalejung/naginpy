@@ -11,7 +11,7 @@ from ..engine import Engine, NormalEval
 sections = []
 
 def ns_hashkey(context):
-    return frozenset({k: id(v) for k, v in context.items()})
+    return frozenset({k: id(v) for k, v in context.items()}.items())
 
 class CacheEntry(object):
     def __init__(self, code, context):
@@ -153,7 +153,6 @@ class DataCacheEngine(Engine):
                 entry.executed = True
 
             new_node = dm.generate_getter_node(entry)
-            ast_print("AFSDFSD", new_node)
             replace_node(
                 context.parent,
                 context.field,
@@ -167,7 +166,7 @@ class DataCacheEngine(Engine):
 
 text = """
 res = pd.rolling_sum(df, 5) + some_func(df.bob) + 1
-#df = pd.DataFrame(np.random.randn(30, 3), columns=['a', 'bob', 'c'])
+df = pd.DataFrame(np.random.randn(30, 3), columns=['a', 'bob', 'cat'])
 res2 = pd.rolling_sum(df, 5) + some_func(df.bob) + 1
 """
 #res = df.bob + df.bob + 1
@@ -205,10 +204,4 @@ dc = DataCacheEngine(dm)
 se = SpecialEval(text, ns=ns, engines=[dc, NormalEval()])
 out = se.process()
 
-print('*'*10)
-print('*'*10)
-[ast_print(context.node) for context in sections]
-
-context = list(sections)[0]
-
-ast_print(se.grapher.code)
+assert id(ns['res']) == id(ns['res2'])
