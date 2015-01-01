@@ -57,6 +57,23 @@ class NodeContext(object):
         self.mgr = mgr
 
     def obj(self):
+        """
+        Grab the value corresponding to this node. 
+        Name(id=id, ctx=Load): var in namespace
+        Attribute(): attribute of var in namespace
+        Call(): result of call
+
+        Note:
+            So what I would prefer is for attribute access to never occur
+            twice, since python is so dynamic.
+
+            However, while I can prevent the NodeContext system from not
+            accessing twice, the corresponding engine would have to
+            replace the Attribute node.
+
+            So I'm not sure if there's a good way to enforce my access once
+            mandate globally. More like coordination it seems.
+        """
         node = self.node
 
         obj = NodeContext._invalid
