@@ -1,6 +1,8 @@
 from naginpy.asttools import _eval
 
 class Engine(object):
+    _allow_missing = False
+
     def should_handle_line(self, line, load_names):
         return False
 

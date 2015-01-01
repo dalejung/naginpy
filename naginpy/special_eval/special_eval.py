@@ -26,6 +26,7 @@ class ContextManager(object):
         self.ns = ns
         self.contexts = {}
         self.objects = {}
+        self.engine = None
 
     def __contains__(self, key):
         return key in self.contexts
@@ -61,8 +62,16 @@ class ContextManager(object):
             So I'm not sure if there's a good way to enforce my access once
             mandate globally. More like coordination it seems.
         """
+        assert self.engine is not None, 'Engine should be set before obj called'
+        obj = self._obj(node)
+        if obj is _missing and not self.engine._allow_missing:
+            raise NameError("context.obj() not found for "
+                            "{0}".format(ast_repr(node)))
+        return obj
+
+    def _obj(self, node):
         if node in self.objects:
-            return self.objects[node]
+            obj = self.objects[node]
 
         obj = NodeContext._invalid
         if isinstance(node, ast.Name):
@@ -146,6 +155,8 @@ class SpecialEval(object):
     def process_line(self, line, engine):
         grapher = self.grapher
         ns = self.ns
+        # don't like this
+        self.context_manager.engine = engine
 
         yield self.debug(line, "Start Processing")
 
