@@ -31,6 +31,7 @@ def _eval(node, ns):
     If the node is not a statement, it will be evaluated as an
     expression and the result returned.
     """
+    node = ast.fix_missing_locations(node)
     expr = node
     mode = 'exec'
     module = ast.Module()

@@ -169,41 +169,48 @@ class SpecialEval(object):
             return
 
         for node in reversed(load_names):
+            self.handle_load_name(node, line, engine)
 
-            # no child since load_names are leafs
-            child = None
-            while True:
-                try:
-                    parent, field, i = grapher.parent(node)
-                except:
-                    break
-
-                if node in self.context_manager:
-                    context = self.context_manager.get(node)
-                else:
-                    context = self.context_manager.create(node,
-                                                      parent,
-                                                      child,
-                                                      field,
-                                                      line)
-                if not engine.should_handle_node(node, context):
-                    break
-
-                new_node = engine.handle_node(node, context)
-
-                if not isinstance(new_node, ast.AST) and new_node is not None:
-                    raise Exception("Return handle_node should be None or"
-                                    " ast.AST. Return same AST node for no op")
-
-                # replace node value
-                if new_node is not node:
-                    parent, field, i = grapher.parent(node)
-                    replace_node(parent, field, i, new_node)
-
-                child = node
-                node = parent
-
+        engine.post_node_loop(line, ns)
         return
+
+    def handle_load_name(self, node, line, engine):
+        """
+        """
+        grapher = self.grapher
+        ns = self.ns
+        # no child since load_names are leafs
+        child = None
+        while True:
+            try:
+                parent, field, i = grapher.parent(node)
+            except:
+                break
+
+            if node in self.context_manager:
+                context = self.context_manager.get(node)
+            else:
+                context = self.context_manager.create(node,
+                                                    parent,
+                                                    child,
+                                                    field,
+                                                    line)
+            if not engine.should_handle_node(node, context):
+                break
+
+            new_node = engine.handle_node(node, context)
+
+            if not isinstance(new_node, ast.AST) and new_node is not None:
+                raise Exception("Return handle_node should be None or"
+                                " ast.AST. Return same AST node for no op")
+
+            # replace node value
+            if new_node is not node:
+                parent, field, i = grapher.parent(node)
+                replace_node(parent, field, i, new_node)
+
+            child = node
+            node = parent
 
     def sanity_check_objects(self, line):
         """
