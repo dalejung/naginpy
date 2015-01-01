@@ -14,6 +14,10 @@ def ast_repr(obj):
 def ast_print(*objs):
     print(*list(ast_repr(obj) for obj in objs))
 
+def ast_source(obj):
+    source =  astor.to_source(obj)
+    return source
+
 def replace_node(parent, field, i, new_node):
     if i is None:
         setattr(parent, field, new_node)
