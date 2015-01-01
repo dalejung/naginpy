@@ -16,6 +16,9 @@ class AstGrapher(object):
 
     def __init__(self, code):
         self.graph = {}
+        self.depth = {}
+        # 0 based depth
+        self.current_depth = -1
 
         if isinstance(code, str):
             code = ast.parse(code)
@@ -34,6 +37,7 @@ class AstGrapher(object):
         return visitor(node)
 
     def generic_visit(self, node):
+        self.current_depth += 1
         for field_name, field in ast.iter_fields(node):
             if isinstance(field, list):
                 for i, item in enumerate(field):
@@ -44,6 +48,7 @@ class AstGrapher(object):
             # for lists vs single values
             item = field
             self.handle_item(node, item, field_name)
+        self.current_depth -= 1
 
     def handle_item(self, parent, node, field_name, i=None):
         """ insert node => (parent, field_name, i) into graph"""
@@ -51,6 +56,7 @@ class AstGrapher(object):
             return
 
         self.graph[node] = ((parent, field_name, i))
+        self.depth[node] = self.current_depth
         self.visit(node) 
 
     def parent(self, node):
