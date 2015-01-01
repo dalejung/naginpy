@@ -8,7 +8,9 @@ class NSEEngine(Engine):
     def should_handle_line(self, line, load_names):
         return True
 
-    def should_handle_node(self, obj, node, parent, field, line):
+    def should_handle_node(self, node, context):
+        parent = context.parent
+        field = context.field
 
         handled = False
         if isinstance(parent, ast.Call) and field == 'func':
@@ -21,7 +23,7 @@ class NSEEngine(Engine):
             handled = True
 
         print('*'*10)
-        print(obj)
+        print(context.obj())
         ast_print('node:', node)
         ast_print('parent:', parent)
         print('field: ', field)
@@ -29,7 +31,7 @@ class NSEEngine(Engine):
 
         return handled
 
-    def handle_node(self, obj, node, parent, field, line):
+    def handle_node(self, node, context):
         if isinstance(node, ast.Call):
             for i, arg in enumerate(node.args):
                 node.args[i] = ast.Str(s=arg.id, lineno=0, col_offset=3)
@@ -46,6 +48,10 @@ class Dale(object):
         return var
 
 dale = Dale()
+ns = {}
+ns['dale'] = dale
 
-se = SpecialEval(text, ns=locals(), engines=[NSEEngine(), NormalEval()])
+se = SpecialEval(text, ns=ns, engines=[NSEEngine(), NormalEval()])
 out = se.process()
+
+assert ns['l'] == 'dale'

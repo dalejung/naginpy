@@ -4,10 +4,10 @@ class Engine(object):
     def should_handle_line(self, line, load_names):
         return False
 
-    def should_handle_node(self, obj, node, parent, field, line):
+    def should_handle_node(self, node, context):
         pass
 
-    def handle_node(self, obj, node, parent, field, line):
+    def handle_node(self, node, context):
         pass
 
     def line_postprocess(self, line, ns):

@@ -21,6 +21,54 @@ class EvalEvent(object):
         obj = self.obj
         return "{code_repr} {msg} obj={obj}".format(**locals())
 
+class ContextManager(object):
+    def __init__(self):
+        self.contexts = {}
+
+    def __contains__(self, key):
+        return key in self.contexts
+
+    def get(self, node):
+        return self.contexts[node]
+
+    def create(self, *args, **kwargs):
+        node = args[0]
+        if node in self.contexts:
+            raise Exception("We already have this node context, something wrong?")
+        kwargs['mgr'] = self
+        context = NodeContext(*args, **kwargs)
+        self.contexts[node] = context
+        return context
+
+class NodeContext(object):
+    """
+    Note that child refers to the AST. So reverse what is intuitive.
+    """
+    # not every ast node has a referring python obj
+    _invalid = object()
+
+    def __init__(self, node, parent, child, field, line, ns, mgr):
+        self.node = node
+        self.parent = parent
+        self.child = child
+        self.field = field
+        self.line = line
+        self.ns = ns
+        self.mgr = mgr
+
+    def obj(self):
+        node = self.node
+
+        obj = NodeContext._invalid
+        if isinstance(node, ast.Name):
+            obj = self.ns.get(self.node.id, _missing)
+
+        if isinstance(node, ast.Attribute):
+            child_obj = self.mgr.get(node.value).obj()
+            obj = getattr(child_obj, node.attr)
+
+        return obj
+
 class SpecialEval(object):
     def __init__(self, grapher, ns, engines=None):
         # grapher might be source string or ast
@@ -30,6 +78,7 @@ class SpecialEval(object):
         self.grapher = grapher
         self.ns = ns
         self.engines = engines
+        self.context_manager = ContextManager()
         self._debug = False
 
     def set_debug(self, debug=True):
@@ -77,18 +126,28 @@ class SpecialEval(object):
             return
 
         for node in reversed(load_names):
-            obj = ns.get(node.id, _missing)
 
+            # no child since load_names are leafs
+            child = None
             while True:
                 try:
                     parent, field, i = grapher.parent(node)
                 except:
                     break
 
-                if not engine.should_handle_node(obj, node, parent, field, line):
+                if node in self.context_manager:
+                    context = self.context_manager.get(node)
+                else:
+                    context = self.context_manager.create(node,
+                                                      parent,
+                                                      child,
+                                                      field,
+                                                      line,
+                                                      ns=self.ns)
+                if not engine.should_handle_node(node, context):
                     break
 
-                new_node = engine.handle_node(obj, node, parent, field, line)
+                new_node = engine.handle_node(node, context)
 
                 if not isinstance(new_node, ast.AST) and new_node is not None:
                     raise Exception("Return handle_node should be None or"
@@ -98,8 +157,9 @@ class SpecialEval(object):
                 if new_node is not node:
                     parent, field, i = grapher.parent(node)
                     replace_node(parent, field, i, new_node)
-                node = parent
 
+                child = node
+                node = parent
 
         res = engine.line_postprocess(line, ns)
         return
