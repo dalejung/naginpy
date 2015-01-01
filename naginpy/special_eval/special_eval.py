@@ -146,8 +146,9 @@ class SpecialEval(object):
 
         self.sanity_check_objects(line)
 
-        for engine in self.engines:
-            res = engine.line_postprocess(line, self.ns)
+        for line in self.grapher.code.body:
+            for engine in self.engines:
+                res = engine.line_postprocess(line, self.ns)
 
     def __next__(self):
         return next(iter(self))
@@ -214,8 +215,8 @@ class SpecialEval(object):
 
         HM. Auto replacing might be the way to go.
         """
+        # TODO put object replacing logic into NormalEval
         for node in ast.walk(line):
             if node in self.context_manager.objects:
                 if isinstance(node, ast.Name):
                     continue
-                print('boo',node)
