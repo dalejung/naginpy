@@ -61,6 +61,9 @@ class ContextManager(object):
             So I'm not sure if there's a good way to enforce my access once
             mandate globally. More like coordination it seems.
         """
+        if node in self.objects:
+            return self.objects[node]
+
         obj = NodeContext._invalid
         if isinstance(node, ast.Name):
             obj = self.ns.get(node.id, _missing)
@@ -69,6 +72,7 @@ class ContextManager(object):
             child_obj = self.get(node.value).obj()
             obj = getattr(child_obj, node.attr)
 
+        self.objects[node] = obj
         return obj
 
 class NodeContext(object):
@@ -88,7 +92,7 @@ class NodeContext(object):
         self.mgr = mgr
 
     def obj(self):
-        return self.mgr.obj(self)
+        return self.mgr.obj(self.node)
 
 
 class SpecialEval(object):
@@ -130,6 +134,11 @@ class SpecialEval(object):
         for engine in self.engines:
             for line in self.grapher.code.body:
                 yield from filter(None, self.process_line(line, engine))
+
+        self.sanity_check_objects(line)
+
+        for engine in self.engines:
+            res = engine.line_postprocess(line, self.ns)
 
     def __next__(self):
         return next(iter(self))
@@ -182,5 +191,20 @@ class SpecialEval(object):
                 child = node
                 node = parent
 
-        res = engine.line_postprocess(line, ns)
         return
+
+    def sanity_check_objects(self, line):
+        """
+        Warn/Enforce the eval once semantic. If the object of an Attribute
+        is grabbed via a NodeContext, that ast.Attribute should no longer be in
+        line.
+
+        We could either warn, error, or automatically replace the ast.Attribute
+
+        HM. Auto replacing might be the way to go.
+        """
+        for node in ast.walk(line):
+            if node in self.context_manager.objects:
+                if isinstance(node, ast.Name):
+                    continue
+                print('boo',node)
