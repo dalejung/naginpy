@@ -22,8 +22,10 @@ class EvalEvent(object):
         return "{code_repr} {msg} obj={obj}".format(**locals())
 
 class ContextManager(object):
-    def __init__(self):
+    def __init__(self, ns):
+        self.ns = ns
         self.contexts = {}
+        self.objects = {}
 
     def __contains__(self, key):
         return key in self.contexts
@@ -35,10 +37,39 @@ class ContextManager(object):
         node = args[0]
         if node in self.contexts:
             raise Exception("We already have this node context, something wrong?")
+        kwargs['ns'] = self.ns
         kwargs['mgr'] = self
         context = NodeContext(*args, **kwargs)
         self.contexts[node] = context
         return context
+
+    def obj(self, node):
+        """
+        Grab the value corresponding to this node. 
+        Name(id=id, ctx=Load): var in namespace
+        Attribute(): attribute of var in namespace
+        Call(): result of call
+
+        Note:
+            So what I would prefer is for attribute access to never occur
+            twice, since python is so dynamic.
+
+            However, while I can prevent the NodeContext system from not
+            accessing twice, the corresponding engine would have to
+            replace the Attribute node.
+
+            So I'm not sure if there's a good way to enforce my access once
+            mandate globally. More like coordination it seems.
+        """
+        obj = NodeContext._invalid
+        if isinstance(node, ast.Name):
+            obj = self.ns.get(node.id, _missing)
+
+        if isinstance(node, ast.Attribute):
+            child_obj = self.get(node.value).obj()
+            obj = getattr(child_obj, node.attr)
+
+        return obj
 
 class NodeContext(object):
     """
@@ -57,34 +88,8 @@ class NodeContext(object):
         self.mgr = mgr
 
     def obj(self):
-        """
-        Grab the value corresponding to this node. 
-        Name(id=id, ctx=Load): var in namespace
-        Attribute(): attribute of var in namespace
-        Call(): result of call
+        return self.mgr.obj(self)
 
-        Note:
-            So what I would prefer is for attribute access to never occur
-            twice, since python is so dynamic.
-
-            However, while I can prevent the NodeContext system from not
-            accessing twice, the corresponding engine would have to
-            replace the Attribute node.
-
-            So I'm not sure if there's a good way to enforce my access once
-            mandate globally. More like coordination it seems.
-        """
-        node = self.node
-
-        obj = NodeContext._invalid
-        if isinstance(node, ast.Name):
-            obj = self.ns.get(self.node.id, _missing)
-
-        if isinstance(node, ast.Attribute):
-            child_obj = self.mgr.get(node.value).obj()
-            obj = getattr(child_obj, node.attr)
-
-        return obj
 
 class SpecialEval(object):
     def __init__(self, grapher, ns, engines=None):
@@ -95,7 +100,7 @@ class SpecialEval(object):
         self.grapher = grapher
         self.ns = ns
         self.engines = engines
-        self.context_manager = ContextManager()
+        self.context_manager = ContextManager(self.ns)
         self._debug = False
 
     def set_debug(self, debug=True):
@@ -159,8 +164,7 @@ class SpecialEval(object):
                                                       parent,
                                                       child,
                                                       field,
-                                                      line,
-                                                      ns=self.ns)
+                                                      line)
                 if not engine.should_handle_node(node, context):
                     break
 
