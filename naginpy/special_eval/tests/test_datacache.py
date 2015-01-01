@@ -8,10 +8,10 @@ from naginpy.asttools import ast_print, ast_source, replace_node, _eval
 from ..special_eval import SpecialEval
 from ..engine import Engine, NormalEval
 
-sections = OrderedDict()
+sections = []
 
 def ns_hashkey(context):
-    return tuple([(k, id(v)) for k, v in context.items()])
+    return frozenset({k: id(v) for k, v in context.items()})
 
 class CacheEntry(object):
     def __init__(self, code, context):
@@ -24,24 +24,35 @@ class CacheEntry(object):
     def source_hash(self):
         return hash(ast_source(self.code))
 
+    def ns_hashkey(self):
+        return ns_hashkey(self.context)
+
     def __hash__(self):
-        return hash(ns_hashkey(self.context)) + self.source_hash()
+        return hash(tuple([self.source_hash(), self.ns_hashkey()]))
 
     def __eq__(self, other):
         if isinstance(other, CacheEntry):
             return hash(self) == hash(other)
 
-        # tuple(hash(source), dict)
-        if isinstance(other[0], int):
-            return ast_source(sef.code) == other[0] \
-                    and hash(ns_hashkey(self.context)) == ns_hashkey(other[1])
+        source_hash = other[0]
+        ns_hashkey = other[1]
 
-        # assume tuple(code, context)
-        return ast_source(sef.code) == ast_source(other[0]) \
-                and hash(ns_hashkey(self.context)) == ns_hashkey(other[1])
+        if isinstance(source_hash, ast.AST):
+            source_hash = ast_source(source_hash)
+
+        if isinstance(source_hash, str):
+            source_hash = hash(source_hash)
+
+        if isinstance(ns_hashkey, dict):
+            ns_hashkey = ns_hashkey(ns_hashkey)
+
+        return self.source_hash() == source_hash \
+                and self.ns_hashkey() == ns_hashkey
 
     def __repr__(self):
-        return "CacheEntry: " + ast_source(self.code)
+        return "CacheEntry: " + ast_source(self.code) + " source_hash=" \
+                + str(self.source_hash()) + ' ns_hashkey=' \
+                + repr(self.ns_hashkey())
 
 class DeferManager(object):
     def __init__(self):
@@ -54,7 +65,10 @@ class DeferManager(object):
         return cache_entry
 
     def value(self, source_hash, **kwargs):
-        entry = self.cache.get(tuple(source_hash, ns_hashkey(kwargs)))
+        key = tuple([source_hash, ns_hashkey(kwargs)])
+        if key not in self.cache:
+            raise Exception("Should not reach a cold cache"+str(key))
+        entry = self.cache[key]
         return entry.value
 
     def generate_getter_node(self, source_hash, context=None):
@@ -113,8 +127,8 @@ class DataCacheEngine(Engine):
 
     def handle_node(self, node, context):
         if isinstance(node, (ast.BinOp, ast.Call, ast.Subscript, ast.Compare)):
-            if node not in sections:
-                sections[node] = context
+            if context not in sections:
+                sections.append(context)
         return node
 
     def post_node_loop(self, line, ns):
@@ -123,16 +137,23 @@ class DataCacheEngine(Engine):
         is_load_name = lambda n: isinstance(n, ast.Name) \
                 and isinstance(n.ctx, ast.Load)
 
-        for node, context in sections.items():
+        for context in sorted(sections, key=lambda x: x.depth, reverse=True):
+            node = context.node
+
             names = set(n.id for n in filter(is_load_name, ast.walk(node)))
             ns_context = {k: ns[k] for k in names}
+
             entry = dm.get(node, ns_context)
-            with Timer(verbose=False) as t:
-                res = _eval(entry.code, ns)
-            entry.value = res
-            entry.exec_time = t.interval
-            entry.executed = True
+
+            if not entry.executed:
+                with Timer(verbose=False) as t:
+                    res = _eval(entry.code, ns)
+                entry.value = res
+                entry.exec_time = t.interval
+                entry.executed = True
+
             new_node = dm.generate_getter_node(entry)
+            ast_print("AFSDFSD", new_node)
             replace_node(
                 context.parent,
                 context.field,
@@ -140,20 +161,32 @@ class DataCacheEngine(Engine):
                 new_node
             )
 
-
     def line_postprocess(self, line, ns):
         ast_print(line)
 
 
 text = """
-res = pd.rolling_sum(df, 5) + df.bob
+res = pd.rolling_sum(df, 5) + some_func(df.bob) + 1
+#df = pd.DataFrame(np.random.randn(30, 3), columns=['a', 'bob', 'c'])
+res2 = pd.rolling_sum(df, 5) + some_func(df.bob) + 1
 """
+#res = df.bob + df.bob + 1
 #pd.bob.rolling_sum(df + 1)
 
 class Dale(object):
 
     def tail(self, var):
         return var
+
+_count = 0
+def some_func(df):
+    print('some func')
+    import time
+    time.sleep(5)
+    global _count
+    _count += 1
+    assert _count == 1
+    return df
 
 import pandas as pd
 import numpy as np
@@ -162,14 +195,20 @@ dale = Dale()
 ns = {}
 ns['dale'] = dale
 ns['pd'] = pd
+ns['np'] = np
 ns['df'] = df
+ns['some_func'] = some_func
+ns['_count'] = 0
 
-dc = DataCacheEngine(DeferManager())
-se = SpecialEval(text, ns=ns, engines=[dc])
+dm = DeferManager()
+dc = DataCacheEngine(dm)
+se = SpecialEval(text, ns=ns, engines=[dc, NormalEval()])
 out = se.process()
 
 print('*'*10)
 print('*'*10)
-[ast_print(node) for node, context in sections.items()]
+[ast_print(context.node) for context in sections]
 
-node = list(sections.values())[0]
+context = list(sections)[0]
+
+ast_print(se.grapher.code)
