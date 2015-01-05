@@ -43,3 +43,11 @@ def _eval(node, ns):
     code = compile(module, '<dale>', mode)
     res = eval(code, ns)
     return res
+
+def is_load_name(node):
+    """ is node a Name(ctx=Load()) variable? """
+    if not isinstance(node, ast.Name):
+        return False
+
+    if isinstance(node.ctx, ast.Load):
+        return True

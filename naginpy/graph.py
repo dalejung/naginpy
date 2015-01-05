@@ -1,6 +1,8 @@
 from collections import OrderedDict
 import ast
 
+from .asttools import is_load_name
+
 class AstGrapher(object):
     """
     Enhanced visitor that provides parent node mapping and
@@ -61,13 +63,6 @@ class AstGrapher(object):
 
     def parent(self, node):
         return self.graph[node]
-
-def is_load_name(node):
-    if not isinstance(node, ast.Name):
-        return False
-
-    if isinstance(node.ctx, ast.Load):
-        return True
 
 class GatherGrapher(AstGrapher):
     """
