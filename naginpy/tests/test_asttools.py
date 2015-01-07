@@ -4,7 +4,7 @@ from textwrap import dedent
 
 import nose.tools as nt
 
-from .asttools import _eval, _exec, _convert_to_expression, ast_source
+from ..asttools import _eval, _exec, _convert_to_expression, ast_source
 
 class TestEval(TestCase):
     def test_exec(self):
