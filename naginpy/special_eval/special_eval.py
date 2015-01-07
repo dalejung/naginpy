@@ -176,6 +176,8 @@ class SpecialEval(object):
 
     def handle_load_name(self, node, line, engine):
         """
+        For every Name(ctx=Load), we will walk up the AST and process as
+        long as the Engine says it should.
         """
         grapher = self.grapher
         ns = self.ns
@@ -198,6 +200,8 @@ class SpecialEval(object):
                                                     field_index,
                                                     line,
                                                     depth)
+
+            # should should_handle_node and handle_node be merged into one?
             if not engine.should_handle_node(node, context):
                 break
 

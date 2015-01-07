@@ -1,9 +1,7 @@
 import ast
 from collections import OrderedDict
 
-from earthdragon.tools.timer import Timer
-
-from naginpy.asttools import ast_print, ast_source, replace_node, _eval, is_load_name
+from naginpy.asttools import ast_print, ast_source, replace_node, is_load_name
 
 from .special_eval import SpecialEval
 from .engine import Engine, NormalEval
@@ -36,6 +34,8 @@ class DataCacheEngine(Engine):
         return handled
 
     def handle_node(self, node, context):
+        """
+        """
         sections = self.sections
         if isinstance(node, (ast.BinOp, ast.Call, ast.Subscript, ast.Compare)):
             if context not in sections:
@@ -47,20 +47,18 @@ class DataCacheEngine(Engine):
         dm = self.defer_manager
         ns['defer_manager'] = dm
 
+        # start from the smaller bits and move out.
         for context in sorted(sections, key=lambda x: x.depth, reverse=True):
             node = context.node
 
+            # grab the variables referenced by this piece code
             names = set(n.id for n in filter(is_load_name, ast.walk(node)))
             ns_context = {k: ns[k] for k in names}
 
             entry = dm.get(node, ns_context)
 
             if not entry.executed:
-                with Timer(verbose=False) as t:
-                    res = _eval(entry.code, ns)
-                entry.value = res
-                entry.exec_time = t.interval
-                entry.executed = True
+                dm.execute(entry, ns)
 
             new_node = dm.generate_getter_node(entry)
             replace_node(

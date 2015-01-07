@@ -1,10 +1,21 @@
 import ast
 
-from naginpy.asttools import ast_source
+from earthdragon.tools.timer import Timer
+
+from naginpy.asttools import ast_source, _eval
 
 def ns_hashkey(context):
     return frozenset({k: id(v) for k, v in context.items()}.items())
 
+class Manifest(object):
+    """
+    For now default to just using ast fragments.
+    """
+    def __init__(self, code):
+        self.code = code
+
+    def __hash__(self):
+        return hash(ast_source(self.code))
 
 class CacheEntry(object):
     def __init__(self, code, context):
@@ -15,7 +26,7 @@ class CacheEntry(object):
         self.executed = False
 
     def source_hash(self):
-        return hash(ast_source(self.code))
+        return hash(self.manifest)
 
     def ns_hashkey(self):
         return ns_hashkey(self.context)
@@ -64,6 +75,14 @@ class DeferManager(object):
             raise Exception("Should not reach a cold cache"+str(key))
         entry = self.cache[key]
         return entry.value
+
+    def execute(self, entry, ns):
+        with Timer(verbose=False) as t:
+            res = _eval(entry.code, ns)
+        entry.value = res
+        entry.exec_time = t.interval
+        entry.executed = True
+        pass
 
     def generate_getter_node(self, source_hash, context=None):
         if isinstance(source_hash, str):
