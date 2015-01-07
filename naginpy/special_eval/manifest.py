@@ -67,15 +67,6 @@ class SourceObject(ContextObject):
     def key(self):
         return "{0}::{1}".format(self.source_key, self._obj_key)
 
-def is_single_expression(code):
-    # TODO should I be converting everything to a single ast.Expression?
-    if isinstance(code, ast.Module):
-        # single expr inside of module
-        return len(code.body == 1) and isinstance(code.body[0], ast.Expr)
-
-    if isinstance(code, ast.Expression):
-        return True
-    return False
 
 class Expression(object):
     """
