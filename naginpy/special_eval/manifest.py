@@ -67,6 +67,61 @@ class SourceObject(ContextObject):
     def key(self):
         return "{0}::{1}".format(self.source_key, self._obj_key)
 
+def ns_hashkey(context):
+    return frozenset({k: hash(v) for k, v in context.items()}.items())
+
+class ExecutionContext(object):
+    """
+    ExecutionContext is dict like context where the items
+    have to hashable so that the ExecutionContext itself is
+    hashable.
+
+
+    Note that an ExecutionContext can have items whose hash depends on
+    id(). This would make the EC stateful. A Stateless EC will require
+    nothing but stateless items.
+
+    TODO: do we consider scalar stateless? If so, then we need to store the
+    actual scalar values in context.
+
+    Technically, we could pickle small objects and then they would be stateless.
+
+    Obviously we would not want to pickle DataFrames/ndarrays.
+
+    Really need to figure out the interplay here. Maybe a stateless
+    ContextObject has an api similar to pickling. So small objects could
+    save their entire state, and bigger source objects could just store
+    the data needed to reconstruct.
+
+    Technically we quasi support this since you could embed pickled data
+    within key.
+
+    Though this is more of a question of whether to automatically pickle
+    small objects that don't explicitly handle special_eval
+    """
+    stateless = False
+
+    def __init__(self, data=None):
+        if data is None:
+            data = {}
+
+        if isinstance(data, ExecutionContext):
+            # ?? not sure about copy semantics
+            data = data.data.copy()
+
+        self.data = data
+
+    def __hash__(self):
+        ns_hashkey(self.data)
+
+    def __eq__(self, other):
+        if isinstance(other, ExecutionContext):
+            return hash(self) == hash(other)
+        if isinstance(other, dict):
+            return hash(self) == hash(ExecutionContext(other))
+        raise Exception("ExecutionContext can only compare to ExecutionContext"
+                        " or dict. Given type {type}".format(type=type(other)))
+
 
 class Expression(object):
     """
@@ -107,4 +162,13 @@ class Manifest(object):
     def __init__(self, expression, context):
         self.expression = expression
         self.context = context
+
+    def __eq__(self, other):
+        if not isinstance(other, Manifest):
+            raise Exception("Can only compare against other manifest")
+
+        if self.expression != other.expression:
+            return False
+
+        return True
 

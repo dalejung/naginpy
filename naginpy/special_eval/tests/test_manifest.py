@@ -6,7 +6,11 @@ import numpy as np
 from numpy.testing import assert_almost_equal
 import nose.tools as nt
 
-from ..manifest import (ContextObject, SourceObject, Expression, Manifest,
+from ..manifest import (ContextObject,
+                        SourceObject,
+                        ExecutionContext,
+                        Expression,
+                        Manifest,
                         get_source_key)
 
 
@@ -161,3 +165,24 @@ class TestExpression(TestCase):
 
         expr3 = Expression("np.arange(15)")
         nt.assert_is_instance(expr3.code, ast.Expression)
+
+class TestExecutionContext(TestCase):
+    def test_scalar_values(self):
+        """
+        scalars are valid objects since they are hashable
+        """
+        context = {
+            'd': 13,
+            'str': 'string_Test'
+        }
+        exec_context = ExecutionContext(context)
+
+    def test_unhashable(self):
+        """
+        unhashable types should error.
+        """
+        context = {
+            'arr': np.random.randn(10)
+        }
+        with nt.assert_raises(TypeError):
+            exec_context = ExecutionContext(context)
