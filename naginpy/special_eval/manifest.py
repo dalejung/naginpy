@@ -1,9 +1,9 @@
 """
 A Manifest is comprised of:
-    1) an Expression, which can be any executable code that takes in inputs. 
+    1) an Expression, which can be any executable code that takes in inputs.
     2) an execution context, which is normally a dict of ContextObjects
 
-The general idea is for any data to be replicable given a Stateless Manifest. 
+The general idea is for any data to be replicable given a Stateless Manifest.
 
 A Stateless manifest is one where the arguments can be reconstructed i.e. not
 directly tied to an object we don't know how to reconstruct.
@@ -19,7 +19,8 @@ Where the concepts start and end are still up in the air at this point.
 """
 import ast
 
-from naginpy.asttools import ast_source, _eval, is_load_name
+from naginpy.asttools import (ast_source, _eval, is_load_name,
+                              _convert_to_expression)
 
 class ContextObject(object):
     """ Represents an input arg to an Expression """
@@ -66,7 +67,7 @@ class SourceObject(ContextObject):
     def key(self):
         return "{0}::{1}".format(self.source_key, self._obj_key)
 
-def is_single_line(code):
+def is_single_expression(code):
     # TODO should I be converting everything to a single ast.Expression?
     if isinstance(code, ast.Module):
         # single expr inside of module
@@ -84,7 +85,9 @@ class Expression(object):
         if isinstance(code, str):
             code = ast.parse(code, '<expr>', 'eval')
 
-        if not is_single_line(code):
+        # Not sure if i should be converting to ast.Expression here.
+        code = _convert_to_expression(code)
+        if not code:
             raise Exception("An Expression can only be one logical line."
                             "{0}".format(ast_source(code)))
         self.code = code
