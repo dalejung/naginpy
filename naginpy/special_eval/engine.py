@@ -1,4 +1,4 @@
-from naginpy.asttools import _eval
+from naginpy.asttools import _eval, _exec
 
 class Engine(object):
     """
@@ -37,5 +37,5 @@ class NormalEval(Engine):
         return True
 
     def line_postprocess(self, line, ns):
-        res = _eval(line, ns)
+        res = _exec(line, ns)
         return res
