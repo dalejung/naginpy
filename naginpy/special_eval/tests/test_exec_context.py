@@ -14,21 +14,7 @@ from ..exec_context import (
     get_source_key
 )
 
-class ArangeSource(object):
-    """
-    Will just return an np.arange(key)
-    """
-    source_key = 'aranger'
-    def __init__(self):
-        self.cache = {}
-
-    def get(self, key):
-        obj = self.cache.get(key, None)
-        if obj is None:
-            obj = np.arange(key)
-        self.cache[key] = obj
-        return self.cache[key]
-
+from .common import ArangeSource
 
 class TestContextObject(TestCase):
     def test_context_object(self):
@@ -190,7 +176,8 @@ class TestExecutionContext(TestCase):
 
         # extract grabbed the data
         nt.assert_equal(len(aranger.cache), 3)
-        nt.assert_set_equal(set(aranger.cache.keys()), set([10, 20, 30]))
+        nt.assert_set_equal(set(map(lambda x: x[0], aranger.cache.keys())), 
+                            set([10, 20, 30]))
 
         # regular context object should be identity
         nt.assert_is(context['arr'], data['arr'])

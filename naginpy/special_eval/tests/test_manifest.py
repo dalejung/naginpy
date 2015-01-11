@@ -18,6 +18,7 @@ from ..exec_context import (
     get_source_key
 )
 
+from .common import ArangeSource
 
 def grab_expression_from_assign(code):
     node = code.body[0].value
@@ -132,27 +133,37 @@ class TestManifest(TestCase):
         nt.assert_not_equal(manifest, manifest4)
 
     def test_nested_eval(self):
-        pass
+        """
+        d * (1 + arr + arr2[10:])
+        which is really two manifests
 
+        arr_manifest = (1 + arr + arr2[10:])
+        manfiest = (d * (arr_manifest))
+        """
 
-"""
-"""
+        arr_source = "1 + arr + arr2[10:]"
+        aranger = ArangeSource()
 
-arr_source = "1 + arr"
-arr_context = {
-    'arr': np.arange(10)
-}
-arr_expr = Expression(arr_source)
-arr_exec_context = ExecutionContext.from_ns(arr_context)
-arr_manifest = Manifest(arr_expr, arr_exec_context)
+        arr_context = {
+            'arr': SourceObject(aranger, 10),
+            'arr2': SourceObject(aranger, 20),
+        }
+        arr_expr = Expression(arr_source)
+        arr_exec_context = ExecutionContext.from_ns(arr_context)
+        arr_manifest = Manifest(arr_expr, arr_exec_context)
 
-source = "d * arr"
-context = {
-    'd': 13,
-    'arr': arr_manifest
-}
-expr = Expression(source)
-exec_context = ExecutionContext.from_ns(context)
-manifest = Manifest(expr, exec_context)
+        source = "d * arr"
+        context = {
+            'd': 13,
+            'arr': arr_manifest
+        }
+        expr = Expression(source)
+        exec_context = ExecutionContext.from_ns(context)
+        manifest = Manifest(expr, exec_context)
 
-correct = 13 * (1 + np.arange(10))
+        correct = 13 * (1 + np.arange(10) + np.arange(20)[10:])
+
+        # up till this point, everything is lazy
+        nt.assert_equal(len(aranger.cache), 0)
+        assert_almost_equal(correct, manifest.eval())
+        nt.assert_equal(len(aranger.cache), 2)
