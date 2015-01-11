@@ -255,7 +255,7 @@ class TestExecutionContext(TestCase):
         del context['so20']
         del context['d']
         context['so10'] = so10
-        context['so20'] = so10
+        context['so20'] = so20
         context['d'] = 13
 
         exec_context = ExecutionContext.from_ns(context)

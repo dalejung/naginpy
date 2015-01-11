@@ -130,3 +130,29 @@ class TestManifest(TestCase):
         exec_context4 = ExecutionContext(context4)
         manifest4 = Manifest(expr, exec_context4)
         nt.assert_not_equal(manifest, manifest4)
+
+    def test_nested_eval(self):
+        pass
+
+
+"""
+"""
+
+arr_source = "1 + arr"
+arr_context = {
+    'arr': np.arange(10)
+}
+arr_expr = Expression(arr_source)
+arr_exec_context = ExecutionContext.from_ns(arr_context)
+arr_manifest = Manifest(arr_expr, arr_exec_context)
+
+source = "d * arr"
+context = {
+    'd': 13,
+    'arr': arr_manifest
+}
+expr = Expression(source)
+exec_context = ExecutionContext.from_ns(context)
+manifest = Manifest(expr, exec_context)
+
+correct = 13 * (1 + np.arange(10))

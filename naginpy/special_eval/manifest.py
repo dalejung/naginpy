@@ -21,6 +21,7 @@ import ast
 
 from naginpy.asttools import (ast_source, _eval, is_load_name,
                               _convert_to_expression)
+from naginpy.special_eval.manifest_abc import ManifestABC
 
 from .exec_context import (
     ExecutionContext,
@@ -91,3 +92,8 @@ class Manifest(object):
 
     def eval(self):
         return _eval(self.expression.code, self.context.extract())
+
+    def get_obj(self):
+        return self.eval()
+
+ManifestABC.register(Manifest)

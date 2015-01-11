@@ -2,6 +2,7 @@ import ast
 
 import numpy as np
 
+from naginpy.special_eval.manifest_abc import ManifestABC
 from naginpy.asttools import (ast_source, _eval, is_load_name,
                               _convert_to_expression)
 
@@ -21,7 +22,7 @@ def _obj(val):
     return val.get_obj()
 
 def _contextify(obj):
-    if isinstance(obj, ContextObject):
+    if isinstance(obj, ManifestABC):
         return obj
 
     if _is_scalar(obj):
@@ -53,6 +54,8 @@ class ContextObject(object):
         class_name = self.__class__.__name__
         key = self.key
         return "{class_name}({key})".format(**locals())
+
+ManifestABC.register(ContextObject)
 
 class ScalarObject(ContextObject):
     """
@@ -150,7 +153,7 @@ class ExecutionContext(object):
             if _is_scalar(v):
                 raise TypeError("scalar values must be wrapped")
 
-            if not isinstance(v, ContextObject):
+            if not isinstance(v, ManifestABC):
                 raise TypeError("Non-scalar objects must be a ContextObject")
 
     def __hash__(self):
