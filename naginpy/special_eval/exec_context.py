@@ -1,7 +1,33 @@
 import ast
 
+import numpy as np
+
 from naginpy.asttools import (ast_source, _eval, is_load_name,
                               _convert_to_expression)
+
+def _hashable(item):
+    try:
+        hash(item)
+    except TypeError:
+        return False
+    return True
+
+def _is_scalar(val):
+    return np.isscalar(val)
+
+def _obj(val):
+    if _is_scalar(val):
+        return val
+    return val.get_obj()
+
+def _contextify(obj):
+    if isinstance(obj, ContextObject):
+        return obj
+
+    if _is_scalar(obj):
+        return ScalarObject(obj)
+
+    return ContextObject(obj)
 
 class ContextObject(object):
     """ Represents an input arg to an Expression """
@@ -22,6 +48,26 @@ class ContextObject(object):
 
     def __eq__(self, other):
         return hash(self) == hash(other)
+
+    def __repr__(self):
+        class_name = self.__class__.__name__
+        key = self.key
+        return "{class_name}({key})".format(**locals())
+
+class ScalarObject(ContextObject):
+    """
+    Context object to wrap scalars which are stateless.
+    """
+    stateless = True
+
+    def __init__(self, obj):
+        if not _is_scalar(obj):
+            raise TypeError("ScalarObject must wrap scalar")
+        self.obj = obj
+
+    @property
+    def key(self):
+        return repr(self.obj)
 
 def get_source_key(source):
     if hasattr(source, 'source_key'):
@@ -48,21 +94,9 @@ class SourceObject(ContextObject):
     def key(self):
         return "{0}::{1}".format(self.source_key, self._obj_key)
 
-def ns_hashkey(context):
-    return frozenset({k: hash(v) for k, v in context.items()}.items())
-
-def _hashable(item):
-    try:
-        hash(item)
-    except TypeError:
-        return False
-    return True
-
-def _all_hashable(data):
-    for k, v in data.items():
-        if not _hashable(v):
-            return False
-    return True
+def ns_hashset(context):
+    """ Return a frozenset used for creating ExecutionContext hash """
+    return frozenset({k: v for k, v in context.items()}.items())
 
 class ExecutionContext(object):
     """
@@ -93,8 +127,6 @@ class ExecutionContext(object):
     Though this is more of a question of whether to automatically pickle
     small objects that don't explicitly handle special_eval
     """
-    stateless = False
-
     def __init__(self, data=None):
         if data is None:
             data = {}
@@ -103,13 +135,26 @@ class ExecutionContext(object):
             # ?? not sure about copy semantics
             data = data.data.copy()
 
-        if not _all_hashable(data):
-            raise TypeError("Context values must be hashable")
+        self._wrap_scalars(data)
+
+        self._validate_data(data)
 
         self.data = data
 
+    @property
+    def stateless(self):
+        return all(map(lambda x: x.stateless, self.data.values()))
+
+    def _validate_data(self, data):
+        for k, v in data.items():
+            if _is_scalar(v):
+                raise TypeError("scalar values must be wrapped")
+
+            if not isinstance(v, ContextObject):
+                raise TypeError("Non-scalar objects must be a ContextObject")
+
     def __hash__(self):
-        ns_hashkey(self.data)
+        return hash(ns_hashset(self.data))
 
     def __eq__(self, other):
         if isinstance(other, ExecutionContext):
@@ -118,3 +163,52 @@ class ExecutionContext(object):
             return hash(self) == hash(ExecutionContext(other))
         raise Exception("ExecutionContext can only compare to ExecutionContext"
                         " or dict. Given type {type}".format(type=type(other)))
+
+    @classmethod
+    def _wrap_scalars(self, data):
+        for k in data:
+            obj = data[k]
+            if _is_scalar(obj):
+                data[k] = ScalarObject(obj)
+
+    @classmethod
+    def _wrap_context(self, ns, keys=None):
+        if keys is None:
+            keys = ns.keys()
+
+        data = {}
+        for k in keys:
+            obj = ns[k]
+            data[k] = _contextify(obj)
+
+        return data
+
+    @classmethod
+    def from_ns(cls, ns, keys=None):
+        """
+        Will wrap a namespace and create ContextObjects that point to the
+        object in kernel.
+        """
+        data = cls._wrap_context(ns, keys=keys)
+        return cls(data)
+
+    def items(self):
+        return self.data.items()
+
+    def values(self):
+        return self.data.values()
+
+    def extract(self):
+        """
+        Get the actual values from execution context
+        """
+        out = {}
+        for k, v in self.data.items():
+            out[k] = _obj(v)
+
+        return out
+
+    def __repr__(self):
+        _dict = self.data.copy()
+        _dict['stateless'] = self.stateless
+        return "{0}({1})".format(self.__class__, _dict)

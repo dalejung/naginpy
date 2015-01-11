@@ -101,9 +101,3 @@ class TestManifest(TestCase):
         exec_context = ExecutionContext(context)
         manifest = Manifest(expr, exec_context)
         nt.assert_equal(manifest.eval(), 'string_test' * 13)
-
-context = {
-    'd': 13,
-    'str': 'string_Test'
-}
-exec_context = ExecutionContext(context)

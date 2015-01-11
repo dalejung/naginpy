@@ -87,4 +87,4 @@ class Manifest(object):
         return True
 
     def eval(self):
-        return _eval(self.expression.code, self.context.data)
+        return _eval(self.expression.code, self.context.extract())

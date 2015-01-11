@@ -8,7 +8,9 @@ import nose.tools as nt
 from ..exec_context import (
     ContextObject,
     SourceObject,
+    ScalarObject,
     ExecutionContext,
+    _obj,
     get_source_key
 )
 
@@ -96,24 +98,87 @@ class TestSourceObject(TestCase):
         so = SourceObject(source, 'test')
         assert so.key == 'sk_attr::test'
 
+
 class TestExecutionContext(TestCase):
 
     def test_scalar_values(self):
         """
         scalars are valid objects since they are hashable
+        right now they are auto wrapped
         """
         context = {
             'd': 13,
             'str': 'string_Test'
         }
-        exec_context = ExecutionContext(context)
 
-    def test_unhashable(self):
+        exec_context = ExecutionContext(context)
+        for k, v in exec_context.items():
+            nt.assert_is_instance(v, ScalarObject)
+            nt.assert_true(v.stateless)
+
+        nt.assert_true(exec_context.stateless)
+
+    def test_init_context_object(self):
         """
-        unhashable types should error.
+        Passed in data must be scalar or context object
         """
         context = {
             'arr': np.random.randn(10)
         }
         with nt.assert_raises(TypeError):
             exec_context = ExecutionContext(context)
+
+    def test_from_ns(self):
+        context = {
+            'd': 13,
+            'str': 'string_Test',
+            'arr': np.random.randn(10)
+        }
+
+        exec_context = ExecutionContext.from_ns(context)
+        for k, v in exec_context.items():
+            nt.assert_is(_obj(v), context[k])
+
+        # since arr is not stateless, entire context is stateful
+        nt.assert_false(exec_context.stateless)
+
+    def test_equals(self):
+        source_dict = {}
+        obj = object()
+        source_dict['test'] = obj
+
+        so = SourceObject(source_dict, 'test', 'source_dict')
+        so_copy = SourceObject(source_dict, 'test', 'source_dict')
+
+        context = {
+            'd': 13,
+            'str': 'string_Test' * 20,
+            'arr': np.random.randn(10),
+            'source': so
+        }
+        context2 = context.copy()
+        context2['source'] = so_copy
+
+        exec_context = ExecutionContext.from_ns(context)
+        exec_context2 = ExecutionContext.from_ns(context2)
+        nt.assert_equal(exec_context, exec_context2)
+
+source_dict = {}
+obj = object()
+source_dict['test'] = obj
+
+so = SourceObject(source_dict, 'test', 'source_dict')
+so_copy = SourceObject(source_dict, 'test', 'source_dict')
+
+context = {
+    'd': 13,
+    'str': 'string_Test' * 20,
+    'arr': np.random.randn(10),
+    'source': so
+}
+context2 = context.copy()
+context2['source'] = so_copy
+
+exec_context = ExecutionContext.from_ns(context)
+exec_context2 = ExecutionContext.from_ns(context2)
+nt.assert_equal(exec_context, exec_context2)
