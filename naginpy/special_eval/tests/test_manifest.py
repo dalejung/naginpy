@@ -101,3 +101,32 @@ class TestManifest(TestCase):
         exec_context = ExecutionContext(context)
         manifest = Manifest(expr, exec_context)
         nt.assert_equal(manifest.eval(), 'string_test' * 13)
+
+    def test_equals(self):
+        source = "d * string_test"
+
+        context = {
+            'd': 13,
+            'string_test': 'string_test'
+        }
+
+        expr = Expression(source)
+        exec_context = ExecutionContext(context)
+        manifest = Manifest(expr, exec_context)
+        manifest2 = Manifest(expr, exec_context)
+
+        nt.assert_equal(manifest, manifest2)
+
+        # change expression
+        expr3 = Expression("d * string_test * 2")
+        manifest3 = Manifest(expr3, exec_context)
+        nt.assert_not_equal(manifest, manifest3)
+
+        # change context
+        context4 = {
+            'd': 11,
+            'string_test': 'string_test'
+        }
+        exec_context4 = ExecutionContext(context4)
+        manifest4 = Manifest(expr, exec_context4)
+        nt.assert_not_equal(manifest, manifest4)

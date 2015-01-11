@@ -84,6 +84,9 @@ class Manifest(object):
         if self.expression != other.expression:
             return False
 
+        if self.context != other.context:
+            return False
+
         return True
 
     def eval(self):
