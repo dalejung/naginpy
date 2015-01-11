@@ -209,6 +209,8 @@ class ExecutionContext(object):
         return out
 
     def __repr__(self):
-        _dict = self.data.copy()
-        _dict['stateless'] = self.stateless
+        bits = []
+        for k in sorted(self.data):
+            bits.append("{0}={1}".format(k, self.data[k]))
+        _dict = ", ".join(bits)
         return "{0}({1})".format(self.__class__, _dict)

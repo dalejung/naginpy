@@ -14,6 +14,21 @@ from ..exec_context import (
     get_source_key
 )
 
+class ArangeSource(object):
+    """
+    Will just return an np.arange(key)
+    """
+    source_key = 'aranger'
+    def __init__(self):
+        self.cache = {}
+
+    def get(self, key):
+        obj = self.cache.get(key, None)
+        if obj is None:
+            obj = np.arange(key)
+        self.cache[key] = obj
+        return self.cache[key]
+
 
 class TestContextObject(TestCase):
     def test_context_object(self):
@@ -55,18 +70,6 @@ class TestSourceObject(TestCase):
         Test that stateless objects will work with sources that
         don't return the same in memory object
         """
-
-        class ArangeSource(object):
-            """
-            Will just return an np.arange(key)
-            """
-            source_key = 'aranger'
-            def __init__(self):
-                pass
-
-            def get(self, key):
-                return np.arange(key)
-
         aranger = ArangeSource()
         nt.assert_equal(get_source_key(aranger), 'aranger')
         so = SourceObject(aranger, 10)
@@ -74,7 +77,6 @@ class TestSourceObject(TestCase):
         obj1 = so.get_obj()
         obj2 = so.get_obj()
 
-        nt.assert_is_not(obj1, obj2)
         assert_almost_equal(obj1, obj2)
 
 
@@ -163,22 +165,100 @@ class TestExecutionContext(TestCase):
         exec_context2 = ExecutionContext.from_ns(context2)
         nt.assert_equal(exec_context, exec_context2)
 
-source_dict = {}
-obj = object()
-source_dict['test'] = obj
+    def test_extract(self):
+        aranger = ArangeSource()
 
-so = SourceObject(source_dict, 'test', 'source_dict')
-so_copy = SourceObject(source_dict, 'test', 'source_dict')
+        so10 = SourceObject(aranger, 10)
+        so20 = SourceObject(aranger, 20)
+        so30 = SourceObject(aranger, 30)
 
-context = {
-    'd': 13,
-    'str': 'string_Test' * 20,
-    'arr': np.random.randn(10),
-    'source': so
-}
-context2 = context.copy()
-context2['source'] = so_copy
+        context = {
+            'd': 13,
+            'str': 'string_Test' * 20,
+            'arr': np.random.randn(10),
+            'so10': so10,
+            'so20': so20,
+            'so30': so30
+        }
 
-exec_context = ExecutionContext.from_ns(context)
-exec_context2 = ExecutionContext.from_ns(context2)
-nt.assert_equal(exec_context, exec_context2)
+        # creating the source object does not auto create
+        nt.assert_equal(len(aranger.cache), 0)
+
+        exec_context = ExecutionContext.from_ns(context)
+
+        data = exec_context.extract()
+
+        # extract grabbed the data
+        nt.assert_equal(len(aranger.cache), 3)
+        nt.assert_set_equal(set(aranger.cache.keys()), set([10, 20, 30]))
+
+        # regular context object should be identity
+        nt.assert_is(context['arr'], data['arr'])
+
+        for i in [10, 20, 30]:
+            k = 'so'+str(i)
+            test = np.arange(i)
+            # not same
+            nt.assert_is_not(data[k], test)
+            # but equal
+            assert_almost_equal(data[k], test)
+
+    def test_repr(self):
+        aranger = ArangeSource()
+
+        so10 = SourceObject(aranger, 10)
+        so20 = SourceObject(aranger, 20)
+        so30 = SourceObject(aranger, 30)
+
+        context = {
+            'd': 13,
+            'str': 'string_Test' * 20,
+            'arr': np.random.randn(10),
+            'so10': so10,
+            'so20': so20,
+            'so30': so30
+        }
+
+        exec_context = ExecutionContext.from_ns(context)
+
+        repr1 = repr(exec_context)
+
+        context['d'] = 12
+
+        exec_context = ExecutionContext.from_ns(context)
+        repr2 = repr(exec_context)
+
+        # change in value should be reflected
+        nt.assert_not_equal(repr1, repr2)
+
+        context = {
+            'so20': so20,
+            'so30': so30
+        }
+        context['so10'] = so10
+        context['arr'] = np.arange(10)
+        context['d'] = 13
+        context['str'] = 'string_Test' * 20
+
+        exec_context = ExecutionContext.from_ns(context)
+        repr3 = repr(exec_context)
+
+        context['arr'] = np.arange(10)
+        exec_context = ExecutionContext.from_ns(context)
+        repr4 = repr(exec_context)
+
+        # since np.arange is wrapped in ContextObject, it fails id check
+        nt.assert_not_equal(repr3, repr4)
+
+        # mix up order? still same context
+        del context['so10']
+        del context['so20']
+        del context['d']
+        context['so10'] = so10
+        context['so20'] = so10
+        context['d'] = 13
+
+        exec_context = ExecutionContext.from_ns(context)
+        repr5 = repr(exec_context)
+
+        nt.assert_equal(repr4, repr5)
