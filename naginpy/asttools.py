@@ -78,7 +78,7 @@ def _eval(node, ns):
     """
     expr = _convert_to_expression(node)
     if expr is None:
-        raise Exception("{node} cannot be evaled".format(repr(node)))
+        raise Exception("{0} cannot be evaled".format(repr(node)))
     return _exec(node, ns)
 
 def is_load_name(node):
