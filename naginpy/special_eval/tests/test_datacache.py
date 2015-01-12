@@ -12,11 +12,8 @@ from naginpy.asttools import ast_print, ast_source, replace_node, _eval
 from ..special_eval import SpecialEval
 from ..engine import Engine, NormalEval
 from ..datacache import DataCacheEngine
-from ..defermanager import DeferManager
+from ..defermanager import ComputationManager
 
-
-#res = df.bob + df.bob + 1
-#pd.bob.rolling_sum(df + 1)
 
 class Dale(object):
 
@@ -37,8 +34,8 @@ class slow_func(object):
 def run_datacache(ns, global_ns, source):
     source = dedent(source)
     ns = ns.copy()
-    ns.update(global_ns)
-    dm = DeferManager()
+    ns.update({k: v for k, v in global_ns.items() if k not in ns})
+    dm = ComputationManager()
     dc = DataCacheEngine(dm)
     ns['dm'] = dm
     ns['dc'] = dc
