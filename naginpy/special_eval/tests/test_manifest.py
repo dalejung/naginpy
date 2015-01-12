@@ -87,6 +87,23 @@ class TestExpression(TestCase):
 
         expr3 = Expression("np.arange(15)")
         nt.assert_is_instance(expr3.code, ast.Expression)
+    def test_key(self):
+        """ stable hash key """
+        source = """
+        np.arange(20)
+        np.sum(arr)
+        """
+        source = dedent(source)
+        code = ast.parse(source)
+
+        expr1 = Expression(code.body[0])
+        expr2 = Expression(code.body[1])
+
+        correct1 = b'}\xff\x1c\x0er\xe8k3\x84\x96R\x98\x9a\xa4\xe0i'
+        correct2 = b'\xd6\x88\x08\xa2\xd0\x01\xa4\xc6\xabb\x1aTj\xce\x98\x18'
+        # keys are stable and should not change between lifecycles
+        nt.assert_equal(expr1.key, correct1)
+        nt.assert_equal(expr2.key, correct2)
 
 
 class TestManifest(TestCase):
@@ -167,3 +184,20 @@ class TestManifest(TestCase):
         nt.assert_equal(len(aranger.cache), 0)
         assert_almost_equal(correct, manifest.eval())
         nt.assert_equal(len(aranger.cache), 2)
+
+import hashlib
+
+source = """
+np.arange(20)
+np.sum(arr)
+"""
+source = dedent(source)
+code = ast.parse(source)
+
+# expression must be single line
+with nt.assert_raises(Exception):
+    Expression(code)
+
+# single line still works
+expr1 = Expression(code.body[0])
+expr2 = Expression(code.body[1])

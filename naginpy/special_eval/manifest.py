@@ -17,6 +17,7 @@ to do caching of intermediate entries.
 
 Where the concepts start and end are still up in the air at this point.
 """
+import hashlib
 import ast
 
 from naginpy.asttools import (ast_source, _eval, is_load_name,
@@ -44,6 +45,13 @@ class Expression(object):
 
     def __hash__(self):
         return hash(self.get_source())
+
+    _key = None
+    @property
+    def key(self):
+        if self._key is None:
+            self._key = hashlib.md5(self.get_source().encode('utf-8')).digest()
+        return self._key
 
     def get_source(self):
         return ast_source(self.code)
