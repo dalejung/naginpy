@@ -211,3 +211,30 @@ class TestManifest(TestCase):
         # where we don't have the source and just the stable key
         stable_key = tuple([expr.key, manifest.context])
         nt.assert_in(stable_key, d)
+
+    def test_stateless(self):
+        """
+        stateless-ness of Manifest depends on context
+        """
+        source = "d * string_test"
+
+        context = {
+            'd': 13,
+            'string_test': 'string_test'
+        }
+
+        expr = Expression(source)
+        exec_context = ExecutionContext(context)
+        manifest = Manifest(expr, exec_context)
+
+        nt.assert_equal(manifest.stateless, True)
+
+        context = {
+            'd': 13,
+            'string_test': object(),
+        }
+
+        expr = Expression(source)
+        exec_context = ExecutionContext.from_ns(context)
+        manifest = Manifest(expr, exec_context)
+        nt.assert_equal(manifest.stateless, False)

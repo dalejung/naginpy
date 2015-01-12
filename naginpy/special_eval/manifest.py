@@ -118,4 +118,9 @@ class Manifest(object):
     def get_obj(self):
         return self.eval()
 
+    @property
+    def stateless(self):
+        return self.context.stateless
+
 ManifestABC.register(Manifest)
+
