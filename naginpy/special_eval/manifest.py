@@ -94,16 +94,18 @@ class Manifest(object):
 
     def __eq__(self, other):
         if isinstance(other, tuple):
-            other = Manifest(other[0], other[1])
-
-        if not isinstance(other, Manifest):
+            other_expression, other_context = other
+        elif isinstance(other, Manifest):
+            other_expression = other.expression
+            other_context = other.context
+        else:
             raise Exception("Can only compare against other manifest or "
                             "tuple(expression, context)")
 
-        if self.expression != other.expression:
+        if self.expression != other_expression:
             return False
 
-        if self.context != other.context:
+        if self.context != other_context:
             return False
 
         return True

@@ -206,3 +206,8 @@ class TestManifest(TestCase):
         key = tuple([manifest.expression, manifest.context])
         # test key
         nt.assert_in(key, d)
+
+        # a feature is being able to check expression.key for cases
+        # where we don't have the source and just the stable key
+        stable_key = tuple([expr.key, manifest.context])
+        nt.assert_in(stable_key, d)
