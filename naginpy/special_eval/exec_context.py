@@ -198,6 +198,9 @@ class ExecutionContext(object):
         data = cls._wrap_context(ns, keys=keys)
         return cls(data)
 
+    def keys(self):
+        return self.data.keys()
+
     def items(self):
         return self.data.items()
 

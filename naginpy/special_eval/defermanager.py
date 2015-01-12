@@ -3,36 +3,29 @@ import ast
 from earthdragon.tools.timer import Timer
 
 from naginpy.asttools import ast_source, _eval
+from .manifest import Manifest, Expression
+from .exec_context import ExecutionContext
 
-def ns_hashkey(context):
-    return frozenset({k: id(v) for k, v in context.items()}.items())
-
-class Manifest(object):
-    """
-    For now default to just using ast fragments.
-    """
-    def __init__(self, code):
-        self.code = code
-
-    def __hash__(self):
-        return hash(ast_source(self.code))
+def _manifest(code, context):
+    expression = Expression(code)
+    context = ExecutionContext.from_ns(context)
+    manifest = Manifest(expression, context)
+    return manifest
 
 class CacheEntry(object):
-    def __init__(self, code, context):
-        self.code = code
-        self.context = context
+    def __init__(self, manifest):
+        self.manifest = manifest
         self.value = None
         self.exec_time = None
         self.executed = False
 
-    def source_hash(self):
-        return hash(self.manifest)
+    @property
+    def expression(self):
+        return self.manifest.expression
 
-    def ns_hashkey(self):
-        return ns_hashkey(self.context)
-
-    def __hash__(self):
-        return hash(tuple([self.source_hash(), self.ns_hashkey()]))
+    @property
+    def context(self):
+        return self.manifest.context
 
     def __eq__(self, other):
         if isinstance(other, CacheEntry):
@@ -54,9 +47,9 @@ class CacheEntry(object):
                 and self.ns_hashkey() == ns_hashkey
 
     def __repr__(self):
-        return "CacheEntry: " + ast_source(self.code) + " source_hash=" \
-                + str(self.source_hash()) + ' ns_hashkey=' \
-                + repr(self.ns_hashkey())
+        return "CacheEntry: " + self.expression.get_source() + " source_hash=" \
+                + str(self.expression.key) + ' ns_hashset=' \
+                + repr(self.context.hashset())
 
 
 class DeferManager(object):
@@ -65,12 +58,14 @@ class DeferManager(object):
 
     def get(self, code, context):
         # trick to get hashable key
-        cache_entry = CacheEntry(code, context)
-        cache_entry = self.cache.setdefault(cache_entry, cache_entry)
+        manifest = _manifest(code, context)
+        cache_entry = CacheEntry(manifest)
+        cache_entry = self.cache.setdefault(manifest, cache_entry)
         return cache_entry
 
     def value(self, source_hash, **kwargs):
-        key = tuple([source_hash, ns_hashkey(kwargs)])
+        context = ExecutionContext.from_ns(kwargs)
+        key = tuple([source_hash, context])
         if key not in self.cache:
             raise Exception("Should not reach a cold cache"+str(key))
         entry = self.cache[key]
@@ -78,22 +73,18 @@ class DeferManager(object):
 
     def execute(self, entry, ns):
         with Timer(verbose=False) as t:
-            res = _eval(entry.code, ns)
+            res = entry.manifest.eval()
         entry.value = res
         entry.exec_time = t.interval
         entry.executed = True
         pass
 
-    def generate_getter_node(self, source_hash, context=None):
-        if isinstance(source_hash, str):
-            source_hash = hash(source_hash)
+    def generate_getter_node(self, entry, context=None):
 
-        if isinstance(source_hash, CacheEntry):
-            entry = source_hash
-            context = entry.context
-            source_hash = entry.source_hash()
+        context = entry.context
+        source_hash = entry.expression.key
 
-        assert isinstance(source_hash, int)
+        assert isinstance(source_hash, bytes) # md5 digest
         return self._generate_getter_node(source_hash, context)
 
     def _generate_getter_node(self, source_hash, context):
@@ -102,7 +93,7 @@ class DeferManager(object):
             value=ast.Name(id="defer_manager", ctx=ast.Load()),
             attr="value", ctx=ast.Load()
         )
-        args = [ast.Num(n=source_hash)]
+        args = [ast.Bytes(s=source_hash)]
         keywords = [ast.keyword(
             arg=k,
             value=ast.Name(id=k, ctx=ast.Load()))

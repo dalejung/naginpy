@@ -102,6 +102,8 @@ class Manifest(object):
             raise Exception("Can only compare against other manifest or "
                             "tuple(expression, context)")
 
+        # note due to how expression is built, other_expression can be
+        # the md5 checksum of the source
         if self.expression != other_expression:
             return False
 
