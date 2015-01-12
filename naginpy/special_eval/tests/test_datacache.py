@@ -12,7 +12,7 @@ from naginpy.asttools import ast_print, ast_source, replace_node, _eval
 from ..special_eval import SpecialEval
 from ..engine import Engine, NormalEval
 from ..datacache import DataCacheEngine
-from ..defermanager import ComputationManager
+from ..computation import ComputationManager
 
 
 class Dale(object):
