@@ -50,7 +50,8 @@ class Expression(object):
     @property
     def key(self):
         if self._key is None:
-            self._key = hashlib.md5(self.get_source().encode('utf-8')).digest()
+            source_string = self.get_source().encode('utf-8')
+            self._key = hashlib.md5(source_string).digest()
         return self._key
 
     def get_source(self):
