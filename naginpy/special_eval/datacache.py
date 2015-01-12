@@ -59,7 +59,7 @@ class DataCacheEngine(Engine):
             entry = dm.get(node, ns_context)
 
             if not entry.executed:
-                dm.execute(entry, ns)
+                dm.execute(entry)
 
             new_node = dm.generate_getter_node(entry)
             replace_node(

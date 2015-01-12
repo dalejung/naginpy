@@ -11,7 +11,11 @@ def _manifest(code, context):
     So, the Manifest is fairly ornergy about the inputs that it takes in.
     """
     expression = Expression(code)
-    context = ExecutionContext.from_ns(context)
+    names = expression.load_names()
+    # TODO move this logic to manifest?
+    in_expression = lambda x: x[0] in names
+    ns_context = dict(filter(in_expression, context.items()))
+    context = ExecutionContext.from_ns(ns_context)
     manifest = Manifest(expression, context)
     return manifest
 
@@ -46,6 +50,7 @@ class ComputationManager(object):
 
     def __init__(self):
         self.cache = {}
+        self.value_map = {}
 
     def get(self, code, context):
         # trick to get hashable key
@@ -68,13 +73,20 @@ class ComputationManager(object):
         entry = self.cache[key]
         return entry.value
 
-    def execute(self, entry, ns):
-        with Timer(verbose=False) as t:
-            res = entry.manifest.eval()
-        entry.value = res
-        entry.exec_time = t.interval
-        entry.executed = True
-        pass
+    def by_value(self, val):
+        """ Return the Computable by value """
+        return self.value_map.get(id(val))
+
+    def execute(self, entry, override=False):
+        # execute if need be
+        if not entry.executed or override:
+            with Timer(verbose=False) as t:
+                res = entry.manifest.eval()
+            entry.value = res
+            entry.exec_time = t.interval
+            entry.executed = True
+            self.value_map[id(entry.value)] = entry
+        return entry.value
 
     def generate_getter_node(self, entry, context=None):
 
