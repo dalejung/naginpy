@@ -156,8 +156,11 @@ class ExecutionContext(object):
             if not isinstance(v, ManifestABC):
                 raise TypeError("Non-scalar objects must be a ContextObject")
 
+    def hashset(self):
+        return ns_hashset(self.data)
+
     def __hash__(self):
-        return hash(ns_hashset(self.data))
+        return hash(self.hashset())
 
     def __eq__(self, other):
         if isinstance(other, ExecutionContext):

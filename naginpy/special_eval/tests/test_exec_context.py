@@ -249,3 +249,24 @@ class TestExecutionContext(TestCase):
         repr5 = repr(exec_context)
 
         nt.assert_equal(repr4, repr5)
+
+    def test_hashset(self):
+        aranger = ArangeSource()
+
+        so10 = SourceObject(aranger, 10)
+        so20 = SourceObject(aranger, 20)
+        so30 = SourceObject(aranger, 30)
+
+        context = {
+            'd': 13,
+            'str': 'string_Test' * 20,
+            'arr': np.random.randn(10),
+            'so10': so10,
+            'so20': so20,
+            'so30': so30
+        }
+
+        exec_context = ExecutionContext.from_ns(context)
+
+        hashset = exec_context.hashset()
+        nt.assert_equal(hash(hashset), hash(exec_context))
