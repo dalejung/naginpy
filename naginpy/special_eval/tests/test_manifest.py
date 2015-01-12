@@ -105,6 +105,10 @@ class TestExpression(TestCase):
         nt.assert_equal(expr1.key, correct1)
         nt.assert_equal(expr2.key, correct2)
 
+        # key also works for equals
+        nt.assert_equal(expr1, correct1)
+        nt.assert_equal(expr2, correct2)
+
 
 class TestManifest(TestCase):
     def test_eval(self):

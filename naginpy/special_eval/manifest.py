@@ -44,7 +44,7 @@ class Expression(object):
         self.code = code
 
     def __hash__(self):
-        return hash(self.get_source())
+        return hash(self.key)
 
     _key = None
     @property
@@ -63,6 +63,9 @@ class Expression(object):
             return hash(self) == hash(Expression(other))
         if isinstance(other, str):
             return hash(self) == hash(Expression(other))
+        # assume bytes is .key
+        if isinstance(other, bytes):
+            return self.key == other
 
     def load_names(self):
         # grab the variables referenced by this piece code
