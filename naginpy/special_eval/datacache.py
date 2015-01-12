@@ -45,7 +45,8 @@ class DataCacheEngine(Engine):
     def post_node_loop(self, line, ns):
         sections = self.sections
         dm = self.defer_manager
-        ns['defer_manager'] = dm
+        # add defer manager to ns. definitely doesn't feel right. revisit
+        ns['__defer_manager__'] = dm
 
         # start from the smaller bits and move out.
         for context in sorted(sections, key=lambda x: x.depth, reverse=True):

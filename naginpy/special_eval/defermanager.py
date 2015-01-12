@@ -27,25 +27,6 @@ class CacheEntry(object):
     def context(self):
         return self.manifest.context
 
-    def __eq__(self, other):
-        if isinstance(other, CacheEntry):
-            return hash(self) == hash(other)
-
-        source_hash = other[0]
-        ns_hashkey = other[1]
-
-        if isinstance(source_hash, ast.AST):
-            source_hash = ast_source(source_hash)
-
-        if isinstance(source_hash, str):
-            source_hash = hash(source_hash)
-
-        if isinstance(ns_hashkey, dict):
-            ns_hashkey = ns_hashkey(ns_hashkey)
-
-        return self.source_hash() == source_hash \
-                and self.ns_hashkey() == ns_hashkey
-
     def __repr__(self):
         return "CacheEntry: " + self.expression.get_source() + " source_hash=" \
                 + str(self.expression.key) + ' ns_hashset=' \
@@ -64,6 +45,12 @@ class DeferManager(object):
         return cache_entry
 
     def value(self, source_hash, **kwargs):
+        """
+        Return the value returned by Manifest matching
+        tuple(source_hash, context)
+
+        This is only called by the getter_node.
+        """
         context = ExecutionContext.from_ns(kwargs)
         key = tuple([source_hash, context])
         if key not in self.cache:
@@ -90,7 +77,7 @@ class DeferManager(object):
     def _generate_getter_node(self, source_hash, context):
 
         func = ast.Attribute(
-            value=ast.Name(id="defer_manager", ctx=ast.Load()),
+            value=ast.Name(id="__defer_manager__", ctx=ast.Load()),
             attr="value", ctx=ast.Load()
         )
         args = [ast.Bytes(s=source_hash)]
