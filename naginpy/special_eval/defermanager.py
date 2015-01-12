@@ -7,12 +7,15 @@ from .manifest import Manifest, Expression
 from .exec_context import ExecutionContext
 
 def _manifest(code, context):
+    """
+    So, the Manifest is fairly ornergy about the inputs that it takes in.
+    """
     expression = Expression(code)
     context = ExecutionContext.from_ns(context)
     manifest = Manifest(expression, context)
     return manifest
 
-class CacheEntry(object):
+class Computable(object):
     def __init__(self, manifest):
         self.manifest = manifest
         self.value = None
@@ -28,19 +31,26 @@ class CacheEntry(object):
         return self.manifest.context
 
     def __repr__(self):
-        return "CacheEntry: " + self.expression.get_source() + " source_hash=" \
+        return "Computable: " + self.expression.get_source() + " source_hash=" \
                 + str(self.expression.key) + ' ns_hashset=' \
                 + repr(self.context.hashset())
 
 
-class DeferManager(object):
+class ComputationManager(object):
+    """
+    Manages the relation because Manifests and their computed values.
+
+    Note, all computables are Deferable, though that does not mean we 
+    use this manager for deferment. 
+    """
+
     def __init__(self):
         self.cache = {}
 
     def get(self, code, context):
         # trick to get hashable key
         manifest = _manifest(code, context)
-        cache_entry = CacheEntry(manifest)
+        cache_entry = Computable(manifest)
         cache_entry = self.cache.setdefault(manifest, cache_entry)
         return cache_entry
 
