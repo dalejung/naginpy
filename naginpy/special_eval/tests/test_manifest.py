@@ -189,19 +189,20 @@ class TestManifest(TestCase):
         assert_almost_equal(correct, manifest.eval())
         nt.assert_equal(len(aranger.cache), 2)
 
-import hashlib
+    def test_hashable(self):
+        source = "d * string_test"
 
-source = """
-np.arange(20)
-np.sum(arr)
-"""
-source = dedent(source)
-code = ast.parse(source)
+        context = {
+            'd': 13,
+            'string_test': 'string_test'
+        }
 
-# expression must be single line
-with nt.assert_raises(Exception):
-    Expression(code)
+        expr = Expression(source)
+        exec_context = ExecutionContext(context)
+        manifest = Manifest(expr, exec_context)
 
-# single line still works
-expr1 = Expression(code.body[0])
-expr2 = Expression(code.body[1])
+        d = {}
+        d[manifest] = manifest #hashable
+        key = tuple([manifest.expression, manifest.context])
+        # test key
+        nt.assert_in(key, d)

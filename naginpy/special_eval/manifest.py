@@ -89,9 +89,16 @@ class Manifest(object):
         self.expression = expression
         self.context = context
 
+    def __hash__(self):
+        return hash(tuple([self.expression, self.context]))
+
     def __eq__(self, other):
+        if isinstance(other, tuple):
+            other = Manifest(other[0], other[1])
+
         if not isinstance(other, Manifest):
-            raise Exception("Can only compare against other manifest")
+            raise Exception("Can only compare against other manifest or "
+                            "tuple(expression, context)")
 
         if self.expression != other.expression:
             return False
