@@ -2,6 +2,7 @@ import ast
 from unittest import TestCase
 
 import numpy as np
+import pandas as pd
 from numpy.testing import assert_almost_equal
 import nose.tools as nt
 
@@ -270,3 +271,19 @@ class TestExecutionContext(TestCase):
 
         hashset = exec_context.hashset()
         nt.assert_equal(hash(hashset), hash(exec_context))
+
+class TestModuleContext(TestCase):
+    def test_module_context(self):
+        import pandas.util.testing as tm
+        import pandas as pd
+        context = {
+            'tm': tm
+        }
+
+        exec_context = ExecutionContext.from_ns(context)
+
+        tm_mod = exec_context.data['tm']
+        correct = "pandas.util.testing(pandas={version})"
+        correct = correct.format(version=pd.__version__)
+
+        nt.assert_equal(tm_mod.key, correct)

@@ -1,4 +1,5 @@
 import ast
+import types
 
 import numpy as np
 
@@ -24,6 +25,9 @@ def _obj(val):
 def _contextify(obj):
     if isinstance(obj, ManifestABC):
         return obj
+
+    if isinstance(obj, types.ModuleType):
+        return ModuleContext(obj)
 
     if _is_scalar(obj):
         return ScalarObject(obj)
@@ -56,6 +60,53 @@ class ContextObject(object):
         return "{class_name}({key})".format(**locals())
 
 ManifestABC.register(ContextObject)
+
+def _version(mod):
+    version = getattr(mod, '__version__', None) \
+              or getattr(mod, 'version', None)
+    return version
+
+def _get_versions(mod):
+    """
+    Return a list of tuple([pkg_name, version]) for each
+    package that effects this module.
+
+    Right now this just grabs from its own package hierarchy.
+
+    I can imagine expanding this like ala pd.show_versions() so
+    we can better assured we get the same behavior
+    """
+    versions = []
+
+    while True:
+        version = _version(mod)
+        if version:
+            versions.append((mod.__name__, version))
+
+        parent_name, _, name = mod.__name__.rpartition('.')
+        if not parent_name:
+            break
+        mod = __import__(parent_name)
+
+    return versions
+
+
+class ModuleContext(ContextObject):
+    stateless = True
+
+    @property
+    def key(self):
+        return self.get_module_manifest(self.obj)
+
+    @staticmethod
+    def get_module_manifest(obj):
+        name = obj.__name__
+        versions = _get_versions(obj)
+        vbits = ["{0}={1}".format(*item) for item in sorted(versions)]
+        v_string = ", ".join(vbits)
+        key = "{name}({v_string})".format(name=name, v_string=v_string)
+        return key
+
 
 class ScalarObject(ContextObject):
     """
