@@ -238,3 +238,45 @@ class TestManifest(TestCase):
         exec_context = ExecutionContext.from_ns(context)
         manifest = Manifest(expr, exec_context)
         nt.assert_equal(manifest.stateless, False)
+
+def test_fragment():
+    """
+    This is a failing test atm. What I want is the ability to take two manifest
+    and see whether one is within the other.
+
+    A couple of notes. They sub-expression itself would obviously need to
+    match. With each sub expression, you can have a subset of execution 
+    contexts. it is that subset that needs to match.
+
+    Manifest 1:
+        Expression:
+            arr1 + np.log(arr2)
+        ExecutionContext:
+            arr1 = np.random(10)
+            arr2 = np.arange(10)
+
+    Manifest 2:
+        Expression:
+            np.log(arr1)
+        ExecutionContext:
+            arr1 = np.arange(10)
+
+    Here manifest 2 should be considered subset of Manfiest 1, provided
+    that np.arange is wrapped to be stateless.
+
+    Now, currently our hash is done via the string repr. Since `arr2` in
+    Manifest 1 is `arr1` in Manfiest 2, we currently wouldn't match.
+
+    So we'd need to match the load name by value and not by name. I suppose
+    one could have a modified ast_source that replaced load names with pos
+    IDs.
+    """
+    cm = ComputationManager()
+    df = pd.DataFrame(np.random.randn(30, 3), columns=['a', 'bob', 'c'])
+    source = """pd.rolling_sum(np.log(df + 10), 5, min_periods=1)"""
+    ns = locals()
+    entry = cm_get(cm, source, ns, globals())
+    code = entry.expression.code
+
+    entry2 = cm_get(cm, "np.log(df+10)", ns, globals())
+    val2 = cm.execute(entry2)

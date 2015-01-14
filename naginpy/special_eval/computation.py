@@ -89,6 +89,13 @@ class ComputationManager(object):
         return entry.value
 
     def generate_getter_node(self, entry, context=None):
+        """
+        Given a Computable, we will return an AST node and namespace update
+        that will result in grabbing the Computable.value.
+
+        The namespace update dict should be the only additional context
+        variables needed to plug in the Computed value.
+        """
 
         context = entry.context
         source_hash = entry.expression.key
@@ -97,6 +104,16 @@ class ComputationManager(object):
         return self._generate_getter_node(source_hash, context)
 
     def _generate_getter_node(self, source_hash, context):
+        """
+        This getter strategy replaces the expression with
+
+        ```
+        __defer_manager__.value(source_hash, key1=key1, key2=key, ...)
+        ```
+
+        The idea here is that the **kwargs will serve as the ExecutionContext
+        during the lookup.
+        """
 
         func = ast.Attribute(
             value=ast.Name(id="__defer_manager__", ctx=ast.Load()),
@@ -111,4 +128,26 @@ class ComputationManager(object):
 
         getter = ast.Call(func=func, args=args, keywords=keywords, 
                           starargs=None, kwargs=None)
-        return ast.fix_missing_locations(getter)
+
+        ns_update = {'__defer_manager__': self}
+        return ast.fix_missing_locations(getter), ns_update
+
+
+
+def _generate_getter_node(self, source_hash, context):
+    """
+    """
+    func = ast.Attribute(
+        value=ast.Name(id="__defer_manager__", ctx=ast.Load()),
+        attr="value", ctx=ast.Load()
+    )
+    args = [ast.Bytes(s=source_hash)]
+    keywords = [ast.keyword(
+        arg=k,
+        value=ast.Name(id=k, ctx=ast.Load()))
+        for k in context.keys()
+    ]
+
+    getter = ast.Call(func=func, args=args, keywords=keywords, 
+                        starargs=None, kwargs=None)
+    return ast.fix_missing_locations(getter)

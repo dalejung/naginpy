@@ -46,7 +46,6 @@ class DataCacheEngine(Engine):
         sections = self.sections
         dm = self.defer_manager
         # add defer manager to ns. definitely doesn't feel right. revisit
-        ns['__defer_manager__'] = dm
 
         # start from the smaller bits and move out.
         for context in sorted(sections, key=lambda x: x.depth, reverse=True):
@@ -61,13 +60,14 @@ class DataCacheEngine(Engine):
             if not entry.executed:
                 dm.execute(entry)
 
-            new_node = dm.generate_getter_node(entry)
+            new_node, ns_update = dm.generate_getter_node(entry)
             replace_node(
                 context.parent,
                 context.field,
                 context.field_index,
                 new_node
             )
+            ns.update(ns_update)
 
     def line_postprocess(self, line, ns):
         ast_print(line)

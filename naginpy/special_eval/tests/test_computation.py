@@ -14,6 +14,7 @@ from naginpy.asttools import ast_print, ast_source, replace_node, _eval
 
 from ..special_eval import SpecialEval
 from ..computation import ComputationManager, Computable, _manifest
+from ..exec_context import _contextify
 
 
 def some_func(df):
@@ -79,28 +80,34 @@ class TestComputationManager(TestCase):
         entry2 = cm.by_value(val)
         nt.assert_is(entry2.value, val)
 
+    def test_nested_entries(self):
+        cm = ComputationManager()
+        df = pd.DataFrame(np.random.randn(30, 3), columns=['a', 'bob', 'c'])
+        source = """pd.rolling_sum(np.log(df + 10), 5, min_periods=1)"""
+        ns = locals()
+        entry = cm_get(cm, source, ns, globals())
+        code = entry.expression.code
 
-cm = ComputationManager()
-df = pd.DataFrame(np.random.randn(30, 3), columns=['a', 'bob', 'c'])
-source = "pd.rolling_sum(df, 5)"
-entry = cm.get(source, locals())
-# context should only include vars needed by expression
-nt.assert_set_equal(set(entry.context.keys()), set(entry.expression.load_names()))
+        entry2 = cm_get(cm, "np.log(df+10)", ns, globals())
+        val2 = cm.execute(entry2)
+        tm.assert_frame_equal(np.log(df+10), val2)
 
-val = cm.execute(entry)
-correct = pd.rolling_sum(df, 5)
+        getter, ns_update = cm.generate_getter_node(entry2)
+        with nt.assert_raises(NameError):
+            getter_val = _eval(getter, ns)
 
-nt.assert_is_not(val, correct)
-tm.assert_frame_equal(val, correct)
+        ns.update(ns_update)
+        getter_val = _eval(getter, ns)
+        # running the getter node with updated ns should return exact same value
+        nt.assert_is(getter_val, val2)
 
-# caches
-val2 = cm.execute(entry)
-nt.assert_is(val, val2)
+        code.body.args[0] = getter
+        # note that the entry expression was changed, but the entry context was not
+        with nt.assert_raises(NameError):
+            cm.execute(entry)
 
-entry2 = cm.get(source, locals())
-nt.assert_is(entry, entry2)
-nt.assert_true(entry2.executed)
-
-val3 = cm.execute(entry, override=True)
-nt.assert_is_not(val, val3)
-tm.assert_frame_equal(val, val3)
+        # TODO, so https://github.com/dalejung/naginpy/issues/2
+        # having to mutate the manifest doesn't seem like a great idea.
+        # need to re-think this api
+        entry.context.data.update(__defer_manager__=_contextify(ns['__defer_manager__']))
+        cm.execute(entry)
