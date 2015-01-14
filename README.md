@@ -4,6 +4,8 @@ Build out tooling to create localized DSLs.
 
 Currently this is all prototype phase and feels like multiple pythons eating the tails of other pythons.
 
+[Original blabbings on this stuff](https://github.com/dalejung/edamame)
+
 # Plan
 
 **Interactive/Import Engine**
