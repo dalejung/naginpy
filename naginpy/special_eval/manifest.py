@@ -17,8 +17,9 @@ to do caching of intermediate entries.
 
 Where the concepts start and end are still up in the air at this point.
 """
-import hashlib
 import ast
+import binascii
+import hashlib
 
 from naginpy.asttools import (
     ast_source,
@@ -73,7 +74,7 @@ class Expression(object):
     def key(self):
         if self._key is None:
             source_string = self.get_source().encode('utf-8')
-            self._key = hashlib.md5(source_string).digest()
+            self._key = hashlib.md5(source_string).hexdigest()
         return self._key
 
     def get_source(self):
@@ -84,10 +85,8 @@ class Expression(object):
             return hash(self) == hash(other)
         if isinstance(other, ast.AST):
             return hash(self) == hash(Expression(other))
+        # assume str is .key
         if isinstance(other, str):
-            return hash(self) == hash(Expression(other))
-        # assume bytes is .key
-        if isinstance(other, bytes):
             return self.key == other
 
     def load_names(self):

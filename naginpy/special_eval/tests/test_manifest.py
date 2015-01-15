@@ -101,8 +101,12 @@ class TestExpression(TestCase):
         expr1 = Expression(code.body[0])
         expr2 = Expression(code.body[1])
 
+        import binascii
+        # changed key to return str, same hash just different rep
         correct1 = b'}\xff\x1c\x0er\xe8k3\x84\x96R\x98\x9a\xa4\xe0i'
+        correct1 = binascii.b2a_hex(correct1).decode('utf-8')
         correct2 = b'\xd6\x88\x08\xa2\xd0\x01\xa4\xc6\xabb\x1aTj\xce\x98\x18'
+        correct2 = binascii.b2a_hex(correct2).decode('utf-8')
         # keys are stable and should not change between lifecycles
         nt.assert_equal(expr1.key, correct1)
         nt.assert_equal(expr2.key, correct2)
