@@ -293,6 +293,16 @@ class TestExecutionContext(TestCase):
         for k in exec_context:
             nt.assert_is(exec_context[k].get_obj(), context[k])
 
+    def test_key(self):
+        context = {
+            'd': 13,
+            'str': 'string_Test'
+        }
+
+        exec_context = ExecutionContext.from_ns(context)
+        correct = "d=ScalarObject(13), str=ScalarObject('string_Test')"
+        nt.assert_equal(exec_context.key, correct)
+
 class TestModuleContext(TestCase):
     def test_module_context(self):
         import pandas.util.testing as tm

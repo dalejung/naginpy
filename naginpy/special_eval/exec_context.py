@@ -274,9 +274,15 @@ class ExecutionContext(object):
 
         return out
 
-    def __repr__(self):
+    @property
+    def key(self):
         bits = []
         for k in sorted(self.data):
             bits.append("{0}={1}".format(k, self.data[k]))
-        _dict = ", ".join(bits)
-        return "{0}({1})".format(self.__class__, _dict)
+        _dict_string = ", ".join(bits)
+        return _dict_string
+
+    def __repr__(self):
+        class_name = self.__class__.__name__
+        key = self.key
+        return "{class_name}({key})".format(**locals())
