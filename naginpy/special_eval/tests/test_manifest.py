@@ -349,5 +349,5 @@ def test_fragment_order_of_ops():
     manifest = _manifest("a + b + a + (a + b)", ns)
 
     manifest2 = _manifest("b + a + (a + b)", ns)
-    nt.assert_not_equal(manifest2, manifest)
+    nt.assert_not_in(manifest2, manifest)
 
