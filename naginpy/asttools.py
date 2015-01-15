@@ -151,7 +151,7 @@ def ast_field_equal(node1, node2):
 
     return True
 
-def ast_equal(code1, code2, check_line_col=False):
+def ast_equal(code1, code2, check_line_col=False, ignore_var_names=False):
     """
     Checks whether ast nodes are equivalent recursively.
 
@@ -168,6 +168,10 @@ def ast_equal(code1, code2, check_line_col=False):
         if type(node1) != type(node2):
             return False
 
+        # ignore the names of load name variables.
+        if ignore_var_names and is_load_name(node1) and is_load_name(node2):
+            continue
+
         if not ast_field_equal(node1, node2):
             return False
 
@@ -179,7 +183,7 @@ def ast_equal(code1, code2, check_line_col=False):
 
     return True
 
-def ast_contains(code, fragment):
+def ast_contains(code, fragment, ignore_var_names=False):
     """ tests whether fragment is a child within code. """
     expr = _convert_to_expression(fragment)
 
@@ -190,7 +194,7 @@ def ast_contains(code, fragment):
     fragment = expr.body
 
     for node in ast.walk(code):
-        if ast_equal(node, fragment):
+        if ast_equal(node, fragment, ignore_var_names=ignore_var_names):
             return True
 
     return False

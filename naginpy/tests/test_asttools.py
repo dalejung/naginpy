@@ -132,3 +132,25 @@ def test_ast_contains_expression():
         source2 = """a = np.random.randn(10, 11)"""
         test = ast.parse(source2)
         ast_contains(mod, test)
+
+def test_ast_contains_ignore_names():
+    # test against a module.
+    source = """
+    test(np.random.randn(10, 11))
+    """
+    mod = ast.parse(dedent(source))
+
+    # rename np to test
+    source2 = """test.random.randn(10, 11)"""
+    test = ast.parse(source2)
+    nt.assert_true(ast_contains(mod, test, ignore_var_names=True))
+
+    # note that only Load(ctx.Load) ids will be ignored
+    source2 = """test.text"""
+    test = ast.parse(source2)
+    nt.assert_false(ast_contains(mod, test, ignore_var_names=True))
+
+    # dumb example. single Name will always match
+    source2 = """anything"""
+    test = ast.parse(source2)
+    nt.assert_true(ast_contains(mod, test, ignore_var_names=True))
