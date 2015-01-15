@@ -2,6 +2,8 @@ import ast
 from unittest import TestCase
 from textwrap import dedent
 
+import pandas as pd
+import numpy as np
 import nose.tools as nt
 
 from ..asttools import (
@@ -11,6 +13,7 @@ from ..asttools import (
     ast_source,
     ast_equal,
     ast_contains,
+    code_context_subset,
     graph_walk
 )
 
@@ -190,3 +193,35 @@ def test_ast_graph_walk():
 
     # using type order to check that the type ordering is stable..
     nt.assert_list_equal(list(map(type, graph_nodes)), graph_types)
+
+def test_code_context_subset():
+    df = pd.DataFrame(np.random.randn(30, 3), columns=['a', 'bob', 'c'])
+    ns = {
+        'df': df,
+        'c': 1,
+        'pd': pd,
+        'np': np
+    }
+    source = """pd.rolling_sum(np.log(df + 10), 5, min_periods=c)"""
+    code = ast.parse(dedent(source), mode='eval')
+
+    # use blah instead of df. same code.
+    child_ns = ns.copy()
+    child_ns['blah'] = ns['df']
+    child_code = ast.parse("np.log(blah+10)") # note that df was renamed blah
+
+    nt.assert_is_none(code_context_subset(code, ns, child_code, child_ns,
+                                        ignore_var_names=False))
+
+    # ignoring the var names should get us our match
+    item = code_context_subset(code, ns, child_code, child_ns,
+                            ignore_var_names=True)
+    nt.assert_is_not_none(item)
+
+    field_name = 'args'
+    field_index = 0
+    correct = getattr(code.body, field_name)[field_index]
+    nt.assert_is(item['node'], correct)
+    nt.assert_is(item['parent'], code.body)
+    nt.assert_equal(item['field_name'], field_name)
+    nt.assert_equal(item['field_index'], field_index)

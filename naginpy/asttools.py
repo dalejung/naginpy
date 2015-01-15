@@ -2,6 +2,9 @@ import ast
 from itertools import zip_longest
 from collections import OrderedDict
 
+import pandas as pd
+import numpy as np
+
 import astdump
 import astor
 
@@ -275,3 +278,54 @@ class AstGraphWalker(object):
 def graph_walk(code):
     walker = AstGraphWalker(code)
     return walker.process()
+
+def _value_equal(left, right):
+    # TODO move this, make it use dispatch? not sure if there is a general value
+    # equality function out there
+    if isinstance(left, pd.core.generic.NDFrame):
+        return left.equals(right)
+
+    if isinstance(left, np.ndarray):
+        return np.all(left == right)
+
+    return left == right
+
+def code_context_subset(code, context, key_code, key_context,
+                    ignore_var_names=False):
+    """
+    Try to find subset match and returns a node context dict as returned
+    by ast_contains.
+
+    Returns: dict from ast_contains
+        {
+            node : ast.AST,
+            parent : ast.AST,
+            field_name : str,
+            field_index : int or None,
+            current_depth : int
+        }
+    """
+    # check expresion
+    matched_item = ast_contains(code, key_code,
+                                    ignore_var_names=ignore_var_names)
+    if not matched_item:
+        return
+
+    matched_parent = matched_item['node']
+
+    # at this point the load names should be equal for each code
+    # fragment. they are equal by position. load_names does not
+    # have a set order, but a stable order per same tree structure.
+    key_load_names = load_names(key_code)
+    matched_load_names = load_names(matched_parent)
+    if len(key_load_names) != len(matched_load_names):
+        return
+
+    # check context.
+    for pk, fk in zip(matched_load_names, key_load_names):
+        pv = context[pk]
+        fv = key_context[fk]
+        if not _value_equal(pv, fv):
+            return
+
+    return matched_item

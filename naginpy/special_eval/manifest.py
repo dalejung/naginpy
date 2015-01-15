@@ -23,6 +23,7 @@ import ast
 from naginpy.asttools import (
     ast_source,
     ast_contains,
+    code_context_subset,
     is_load_name,
     load_names,
     _eval,
@@ -143,46 +144,13 @@ class Manifest(object):
         return self.context.stateless
 
     def subset(self, key, ignore_var_names=True):
-        """
-        Try to find subset match and returns a node context dict as returned
-        by ast_contains.
-
-        {
-            node : ast.AST,
-            parent : ast.AST,
-            field_name : str,
-            field_index : int or None,
-            current_depth : int
-        }
-
-        """
         code = self.expression.code
+        context = self.context
+
         key_code = key.expression.code
-
-        # check expresion
-        matched_item = ast_contains(code, key_code,
-                                      ignore_var_names=ignore_var_names)
-        if not matched_item:
-            return
-
-        matched_parent = matched_item['node']
-
-        # at this point the load names should be equal for each code
-        # fragment. they are equal by position. load_names does not
-        # have a set order, but a stable order per same tree structure.
-        key_load_names = load_names(key_code)
-        matched_load_names = load_names(matched_parent)
-        if len(key_load_names) != len(matched_load_names):
-            return
-
-        # check context.
-        for pk, fk in zip(matched_load_names, key_load_names):
-            pv = self.context[pk]
-            fv = key.context[fk]
-            if pv != fv:
-                return
-
-        return matched_item
+        key_context = key.context
+        return code_context_subset(code, context, key_code, key_context,
+                               ignore_var_names=ignore_var_names)
 
     def __contains__(self, other):
         matched_item = self.subset(other, ignore_var_names=True)
