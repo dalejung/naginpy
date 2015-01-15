@@ -181,6 +181,13 @@ def ast_equal(code1, code2, check_line_col=False):
 
 def ast_contains(code, fragment):
     """ tests whether fragment is a child within code. """
+    expr = _convert_to_expression(fragment)
+
+    if expr is None:
+        raise Exception("Fragment must be an expression")
+
+    # unwrap 
+    fragment = expr.body
 
     for node in ast.walk(code):
         if ast_equal(node, fragment):

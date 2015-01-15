@@ -99,3 +99,36 @@ def test_ast_contains():
     # top level random module
     test = ast.parse("random.randn", mode='eval').body
     nt.assert_false(ast_contains(code1, test))
+
+    # test against a module.
+    source = """
+    first_line() + 100
+    bob = test(np.random.randn(10, 11)) + test2 / 99
+    """
+    mod = ast.parse(dedent(source))
+
+    source2 = """np.random.randn(10, 11)"""
+    test = ast.parse(source2, mode='eval').body
+    nt.assert_true(ast_contains(mod, test))
+
+def test_ast_contains_expression():
+    """
+    Test that the fragment must be an expression.
+    """
+    # test against a module.
+    source = """
+    first_line() + 100
+    bob = test(np.random.randn(10, 11)) + test2 / 99
+    """
+    mod = ast.parse(dedent(source))
+
+    # expression compiled as module work sfine
+    source2 = """np.random.randn(10, 11)"""
+    test = ast.parse(source2)
+    nt.assert_true(ast_contains(mod, test))
+
+    # assignment is a nono
+    with nt.assert_raises_regexp(Exception, "Fragment must be an expression"):
+        source2 = """a = np.random.randn(10, 11)"""
+        test = ast.parse(source2)
+        ast_contains(mod, test)
