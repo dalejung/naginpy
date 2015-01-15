@@ -1,5 +1,6 @@
 import ast
 from itertools import zip_longest
+from collections import OrderedDict
 
 import astdump
 import astor
@@ -195,6 +196,10 @@ def ast_contains(code, fragment, ignore_var_names=False):
 
     for node in ast.walk(code):
         if ast_equal(node, fragment, ignore_var_names=ignore_var_names):
-            return True
+            return node
 
     return False
+
+def load_names(code):
+    names = (n.id for n in filter(is_load_name, ast.walk(code)))
+    return list(OrderedDict.fromkeys(names))

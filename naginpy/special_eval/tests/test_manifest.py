@@ -2,6 +2,7 @@ import ast
 from unittest import TestCase
 from textwrap import dedent
 
+import pandas as pd
 import numpy as np
 from numpy.testing import assert_almost_equal
 import nose.tools as nt
@@ -9,6 +10,7 @@ import nose.tools as nt
 from ..manifest import (
     Expression,
     Manifest,
+    _manifest
 )
 
 from ..exec_context import (
@@ -271,12 +273,49 @@ def test_fragment():
     one could have a modified ast_source that replaced load names with pos
     IDs.
     """
-    cm = ComputationManager()
+    c = 1
     df = pd.DataFrame(np.random.randn(30, 3), columns=['a', 'bob', 'c'])
-    source = """pd.rolling_sum(np.log(df + 10), 5, min_periods=1)"""
+    source = """pd.rolling_sum(np.log(df + 10), 5, min_periods=c)"""
     ns = locals()
-    entry = cm_get(cm, source, ns, globals())
-    code = entry.expression.code
+    ns.update({k:v for k, v in globals().items() if k not in ns})
+    manifest = _manifest(source, ns)
 
-    entry2 = cm_get(cm, "np.log(df+10)", ns, globals())
-    val2 = cm.execute(entry2)
+    sub_mf = _manifest("np.log(df+10)", ns.copy())
+    nt.assert_in(sub_mf, manifest)
+    nt.assert_true(manifest.contains(sub_mf))
+
+    # new dataframe, does effect contains
+    ns['df'] = pd.DataFrame(np.random.randn(30, 3), columns=['a', 'bob', 'c'])
+    sub_mf = _manifest("np.log(df+10)", ns.copy())
+    nt.assert_not_in(sub_mf, manifest)
+    nt.assert_false(manifest.contains(sub_mf)) #context should no longer match
+
+    # c is changed but not part of fragment, so doesn't effect contains
+    ns['c'] = 3
+    manifest = _manifest(source, ns)
+    sub_mf = _manifest("np.log(df+10)", ns.copy())
+    nt.assert_in(sub_mf, manifest)
+    nt.assert_true(manifest.contains(sub_mf))
+
+def test_fragment_var_name():
+    """
+    This should match even though the variable names are different.
+    """
+    c = 1
+    df = pd.DataFrame(np.random.randn(30, 3), columns=['a', 'bob', 'c'])
+    source = """pd.rolling_sum(np.log(df + 10), 5, min_periods=c)"""
+    ns = locals()
+    ns.update({k:v for k, v in globals().items() if k not in ns})
+    manifest = _manifest(source, ns)
+
+    # use blah instead of df. same code.
+    ns['blah'] = ns['df']
+    sub_mf = _manifest("np.log(blah+10)", ns)
+    nt.assert_in(sub_mf, manifest)
+    nt.assert_true(manifest.contains(sub_mf))
+
+    # now change blah to be a differnt value
+    ns['blah'] = 1
+    sub_mf = _manifest("np.log(blah+10)", ns)
+    nt.assert_not_in(sub_mf, manifest)
+    nt.assert_false(manifest.contains(sub_mf))

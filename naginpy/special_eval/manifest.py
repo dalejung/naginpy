@@ -20,8 +20,14 @@ Where the concepts start and end are still up in the air at this point.
 import hashlib
 import ast
 
-from naginpy.asttools import (ast_source, _eval, is_load_name,
-                              _convert_to_expression)
+from naginpy.asttools import (
+    ast_source,
+    ast_contains,
+    is_load_name,
+    load_names,
+    _eval,
+    _convert_to_expression
+)
 from naginpy.special_eval.manifest_abc import ManifestABC
 
 from .exec_context import (
@@ -84,9 +90,7 @@ class Expression(object):
             return self.key == other
 
     def load_names(self):
-        # grab the variables referenced by this piece code
-        names = set(n.id for n in filter(is_load_name, ast.walk(self.code)))
-        return names
+        return load_names(self.code)
 
 
 class Manifest(object):
@@ -137,6 +141,36 @@ class Manifest(object):
     @property
     def stateless(self):
         return self.context.stateless
+
+    def contains(self, other, ignore_var_names=True):
+        code = self.expression.code
+        other_code = other.expression.code
+
+        # check expresion
+        matched_parent = ast_contains(code, other_code,
+                                      ignore_var_names=ignore_var_names)
+        if not matched_parent:
+            return False
+
+        # at this point the load names should be equal for each code
+        # fragment. they are equal by position. load_names does not
+        # have a set order, but a stable order per same tree structure.
+        other_load_names = load_names(other_code)
+        matched_load_names = load_names(matched_parent)
+        if len(other_load_names) != len(matched_load_names):
+            return False
+
+        # check context.
+        for pk, fk in zip(matched_load_names, other_load_names):
+            pv = self.context[pk]
+            fv = other.context[fk]
+            if pv != fv:
+                return False
+
+        return True
+
+    def __contains__(self, other):
+        return self.contains(other, ignore_var_names=True)
 
 ManifestABC.register(Manifest)
 
