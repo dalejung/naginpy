@@ -319,3 +319,35 @@ def test_fragment_var_name():
     sub_mf = _manifest("np.log(blah+10)", ns)
     nt.assert_not_in(sub_mf, manifest)
     nt.assert_false(manifest.contains(sub_mf))
+
+def test_fragment_order_of_ops():
+    """
+    So, in a pure math sense, you should be able to 
+    do this replacement:
+
+    E1 = a + b + a + (a + b)
+    S = b + a + (a + b)
+    E3 = a + S
+    E1 == E3
+
+    But since in python, the order of operations matters, you can't just
+    treat that as a subset.(a + b) is not always the same as (b + a)
+
+    Dumb example:
+
+    class Bob:
+        def __add__(self, other):
+            return other
+
+    a = Bob()
+    b = Bob()
+    nt.assert_not_equal(a + b, b + a)
+    """
+    # TODO, is there a way to subset when dealing with types where operations
+    # are commutative?
+    ns = {'a': 1, 'b': 2}
+    manifest = _manifest("a + b + a + (a + b)", ns)
+
+    manifest2 = _manifest("b + a + (a + b)", ns)
+    nt.assert_not_equal(manifest2, manifest)
+
