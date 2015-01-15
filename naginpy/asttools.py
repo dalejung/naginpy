@@ -194,9 +194,10 @@ def ast_contains(code, fragment, ignore_var_names=False):
     # unwrap 
     fragment = expr.body
 
-    for node in ast.walk(code):
+    for item in graph_walk(code):
+        node = item['node']
         if ast_equal(node, fragment, ignore_var_names=ignore_var_names):
-            return node
+            return item
 
     return False
 

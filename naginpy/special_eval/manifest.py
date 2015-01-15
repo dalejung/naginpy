@@ -147,10 +147,12 @@ class Manifest(object):
         other_code = other.expression.code
 
         # check expresion
-        matched_parent = ast_contains(code, other_code,
+        matched_item = ast_contains(code, other_code,
                                       ignore_var_names=ignore_var_names)
-        if not matched_parent:
+        if not matched_item:
             return False
+
+        matched_parent = matched_item['node']
 
         # at this point the load names should be equal for each code
         # fragment. they are equal by position. load_names does not
