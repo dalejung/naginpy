@@ -272,6 +272,27 @@ class TestExecutionContext(TestCase):
         hashset = exec_context.hashset()
         nt.assert_equal(hash(hashset), hash(exec_context))
 
+    def test_iter(self):
+        context = {
+            'd': 13,
+            'str': 'string_Test',
+        }
+
+        exec_context = ExecutionContext.from_ns(context)
+        correct = list(exec_context.keys())
+        test = list(exec_context)
+        nt.assert_count_equal(test, correct)
+
+    def test_getitem(self):
+        context = {
+            'd': 13,
+            'str': 'string_Test',
+        }
+
+        exec_context = ExecutionContext.from_ns(context)
+        for k in exec_context:
+            nt.assert_is(exec_context[k].get_obj(), context[k])
+
 class TestModuleContext(TestCase):
     def test_module_context(self):
         import pandas.util.testing as tm

@@ -258,6 +258,12 @@ class ExecutionContext(object):
     def values(self):
         return self.data.values()
 
+    def __iter__(self):
+        return iter(self.keys())
+
+    def __getitem__(self, key):
+        return self.data[key]
+
     def extract(self):
         """
         Get the actual values from execution context
