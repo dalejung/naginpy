@@ -282,20 +282,17 @@ def test_fragment():
 
     sub_mf = _manifest("np.log(df+10)", ns.copy())
     nt.assert_in(sub_mf, manifest)
-    nt.assert_true(manifest.contains(sub_mf))
 
     # new dataframe, does effect contains
     ns['df'] = pd.DataFrame(np.random.randn(30, 3), columns=['a', 'bob', 'c'])
     sub_mf = _manifest("np.log(df+10)", ns.copy())
     nt.assert_not_in(sub_mf, manifest)
-    nt.assert_false(manifest.contains(sub_mf)) #context should no longer match
 
     # c is changed but not part of fragment, so doesn't effect contains
     ns['c'] = 3
     manifest = _manifest(source, ns)
     sub_mf = _manifest("np.log(df+10)", ns.copy())
     nt.assert_in(sub_mf, manifest)
-    nt.assert_true(manifest.contains(sub_mf))
 
 def test_fragment_var_name():
     """
@@ -312,13 +309,11 @@ def test_fragment_var_name():
     ns['blah'] = ns['df']
     sub_mf = _manifest("np.log(blah+10)", ns)
     nt.assert_in(sub_mf, manifest)
-    nt.assert_true(manifest.contains(sub_mf))
 
     # now change blah to be a differnt value
     ns['blah'] = 1
     sub_mf = _manifest("np.log(blah+10)", ns)
     nt.assert_not_in(sub_mf, manifest)
-    nt.assert_false(manifest.contains(sub_mf))
 
 def test_fragment_order_of_ops():
     """

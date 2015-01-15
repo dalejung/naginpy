@@ -142,37 +142,55 @@ class Manifest(object):
     def stateless(self):
         return self.context.stateless
 
-    def contains(self, other, ignore_var_names=True):
+    def subset(self, key, ignore_var_names=True):
+        """
+        Try to find subset match and returns a node context dict as returned
+        by ast_contains.
+
+        {
+            node : ast.AST,
+            parent : ast.AST,
+            field_name : str,
+            field_index : int or None,
+            current_depth : int
+        }
+
+        """
         code = self.expression.code
-        other_code = other.expression.code
+        key_code = key.expression.code
 
         # check expresion
-        matched_item = ast_contains(code, other_code,
+        matched_item = ast_contains(code, key_code,
                                       ignore_var_names=ignore_var_names)
         if not matched_item:
-            return False
+            return
 
         matched_parent = matched_item['node']
 
         # at this point the load names should be equal for each code
         # fragment. they are equal by position. load_names does not
         # have a set order, but a stable order per same tree structure.
-        other_load_names = load_names(other_code)
+        key_load_names = load_names(key_code)
         matched_load_names = load_names(matched_parent)
-        if len(other_load_names) != len(matched_load_names):
-            return False
+        if len(key_load_names) != len(matched_load_names):
+            return
 
         # check context.
-        for pk, fk in zip(matched_load_names, other_load_names):
+        for pk, fk in zip(matched_load_names, key_load_names):
             pv = self.context[pk]
-            fv = other.context[fk]
+            fv = key.context[fk]
             if pv != fv:
-                return False
+                return
 
-        return True
+        return matched_item
 
     def __contains__(self, other):
-        return self.contains(other, ignore_var_names=True)
+        matched_item = self.subset(other, ignore_var_names=True)
+
+        if matched_item is None:
+            return False
+
+        return True
 
 ManifestABC.register(Manifest)
 
