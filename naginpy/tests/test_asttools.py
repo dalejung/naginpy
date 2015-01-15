@@ -10,7 +10,8 @@ from ..asttools import (
     _convert_to_expression,
     ast_source,
     ast_equal,
-    ast_contains
+    ast_contains,
+    graph_walk
 )
 
 class TestEval(TestCase):
@@ -154,3 +155,38 @@ def test_ast_contains_ignore_names():
     source2 = """anything"""
     test = ast.parse(source2)
     nt.assert_true(ast_contains(mod, test, ignore_var_names=True))
+
+def test_ast_graph_walk():
+    source = """
+    test(np.random.randn(10, 11))
+    """
+    mod = ast.parse(dedent(source))
+
+    items = list(graph_walk(mod))
+    graph_nodes = [item['node'] for item in items]
+
+    walk_nodes = list(ast.walk(mod))
+    # remove module node which the graph_walk won't have
+    nt.assert_is_instance(walk_nodes.pop(0), ast.Module)
+
+    # we should have reached the same nodes, not in same order
+    nt.assert_count_equal(graph_nodes, walk_nodes)
+
+    graph_types = [
+        ast.Expr,
+        ast.Call,
+        ast.Name,
+        ast.Load,
+        ast.Call,
+        ast.Attribute,
+        ast.Attribute,
+        ast.Name,
+        ast.Load,
+        ast.Load,
+        ast.Load,
+        ast.Num,
+        ast.Num
+    ]
+
+    # using type order to check that the type ordering is stable..
+    nt.assert_list_equal(list(map(type, graph_nodes)), graph_types)
