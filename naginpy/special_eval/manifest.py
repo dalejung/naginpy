@@ -28,6 +28,21 @@ from .exec_context import (
     ExecutionContext,
 )
 
+def _manifest(code, context):
+    """
+    So, the Manifest is fairly ornergy about the inputs that it takes in.
+
+    This is a quick and easy Manifest creator
+    """
+    expression = Expression(code)
+    names = expression.load_names()
+    # TODO move this logic to Manifest init itself?
+    in_expression = lambda x: x[0] in names
+    ns_context = dict(filter(in_expression, context.items()))
+    context = ExecutionContext.from_ns(ns_context)
+    manifest = Manifest(expression, context)
+    return manifest
+
 class Expression(object):
     """
     For now default to just using ast fragments.
