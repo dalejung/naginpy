@@ -1,4 +1,6 @@
 import ast
+from itertools import zip_longest
+
 import astdump
 import astor
 
@@ -88,3 +90,91 @@ def is_load_name(node):
 
     if isinstance(node.ctx, ast.Load):
         return True
+
+def field_iter(node):
+    """ yield field, field_name, field_index """
+    for field_name, field in ast.iter_fields(node):
+        if isinstance(field, list):
+            for i, item in enumerate(field):
+                yield item, field_name, i
+            continue
+
+        # need to flatten so we don't have special processing
+        # for lists vs single values
+        item = field
+        yield item, field_name, None
+
+
+def ast_field_equal(node1, node2):
+    """
+    Check that fields are equal.
+
+    Note: If the value of the field is an ast.AST and are of equal type,
+    we don't check any deeper.
+    """
+    # check fields
+    field_gen1 = field_iter(node1)
+    field_gen2 = field_iter(node2)
+
+    for field_item1, field_item2 in zip_longest(field_gen1, field_gen2):
+        # unequal length
+        if field_item1 is None or field_item2 is None:
+            return False
+
+        field_value1 = field_item1[0]
+        field_value2 = field_item2[0]
+
+        field_name1 = field_item1[1]
+        field_name2 = field_item2[1]
+
+        field_index1 = field_item1[2]
+        field_index2 = field_item2[2]
+
+        if type(field_value1) != type(field_value2):
+            return False
+
+        if field_name1 != field_name2:
+            return False
+
+        if field_index1 != field_index2:
+            return False
+
+        # note, we don't do equality check on AST nodes since ast.walk
+        # will hit it.
+        if isinstance(field_value1, ast.AST):
+            continue
+
+        # this should largely be strings and numerics, afaik
+        assert isinstance(field_value1, (str, int, float, type(None)))
+        if field_value1 != field_value2:
+            return False
+
+    return True
+
+def ast_equal(code1, code2, check_line_col=False):
+    """
+    Checks whether ast nodes are equivalent recursively.
+
+    By default does not check line number or col offset
+    """
+    gen1 = ast.walk(code1)
+    gen2 = ast.walk(code2)
+
+    for node1, node2 in zip_longest(gen1, gen2):
+        # unequal length
+        if node1 is None or node2 is None:
+            return False
+
+        if type(node1) != type(node2):
+            return False
+
+        if not ast_field_equal(node1, node2):
+            return False
+
+        if check_line_col and hasattr(node1, 'lineno'):
+            if node1.lineno != node2.lineno:
+                return False
+            if node1.col_offset != node2.col_offset:
+                return False
+
+    return True

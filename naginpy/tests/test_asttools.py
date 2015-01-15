@@ -4,7 +4,13 @@ from textwrap import dedent
 
 import nose.tools as nt
 
-from ..asttools import _eval, _exec, _convert_to_expression, ast_source
+from ..asttools import (
+    _eval,
+    _exec,
+    _convert_to_expression,
+    ast_source,
+    ast_equal
+)
 
 class TestEval(TestCase):
     def test_exec(self):
@@ -45,3 +51,23 @@ def test_ast_source_expression():
 
     expr = _convert_to_expression(code)
     nt.assert_equal(source, ast_source(expr))
+
+
+def test_ast_equal():
+    source = """test(np.random.randn(10, 10))"""
+    code1 = ast.parse(source, mode='eval')
+
+    source2 = """test(np.random.randn(10, 10))"""
+    code2 = ast.parse(source2, mode='eval')
+
+    nt.assert_true(ast_equal(code1, code2))
+
+    source3 = """test(np.random.randn(10, 11))"""
+    code3 = ast.parse(source3, mode='eval')
+    nt.assert_false(ast_equal(code1, code3))
+
+    # try subset
+    source4 = """np.random.randn(10, 11)"""
+    code4 = ast.parse(source4, mode='eval')
+
+    nt.assert_true(ast_equal(code3.body.args[0], code4.body))
