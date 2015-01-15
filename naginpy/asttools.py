@@ -178,3 +178,12 @@ def ast_equal(code1, code2, check_line_col=False):
                 return False
 
     return True
+
+def ast_contains(code, fragment):
+    """ tests whether fragment is a child within code. """
+
+    for node in ast.walk(code):
+        if ast_equal(node, fragment):
+            return True
+
+    return False

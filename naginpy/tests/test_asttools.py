@@ -9,7 +9,8 @@ from ..asttools import (
     _exec,
     _convert_to_expression,
     ast_source,
-    ast_equal
+    ast_equal,
+    ast_contains
 )
 
 class TestEval(TestCase):
@@ -71,3 +72,30 @@ def test_ast_equal():
     code4 = ast.parse(source4, mode='eval')
 
     nt.assert_true(ast_equal(code3.body.args[0], code4.body))
+
+
+def test_ast_contains():
+    source1 = """test(np.random.randn(10, 11)) + test2 / 99"""
+    code1 = ast.parse(source1, mode='eval').body
+
+    source2 = """np.random.randn(10, 11)"""
+    test = ast.parse(source2, mode='eval').body
+    nt.assert_true(ast_contains(code1, test))
+
+    test = ast.parse("10", mode='eval').body
+    nt.assert_true(ast_contains(code1, test))
+
+    test = ast.parse("test2", mode='eval').body
+    nt.assert_true(ast_contains(code1, test))
+
+    test = ast.parse("np.random.randn", mode='eval').body
+    nt.assert_true(ast_contains(code1, test))
+
+    test = ast.parse("test2/99", mode='eval').body
+    nt.assert_true(ast_contains(code1, test))
+
+    # False. Not that this isn't about a textual subset.
+    # random.randn means nothing without np. it implies a 
+    # top level random module
+    test = ast.parse("random.randn", mode='eval').body
+    nt.assert_false(ast_contains(code1, test))
