@@ -14,6 +14,8 @@ from ..asttools import (
     ast_equal,
     ast_contains,
     code_context_subset,
+    generate_getter_var,
+    generate_getter_lazy,
     graph_walk
 )
 
@@ -225,3 +227,24 @@ def test_code_context_subset():
     nt.assert_is(item['parent'], code.body)
     nt.assert_equal(item['field_name'], field_name)
     nt.assert_equal(item['field_index'], field_index)
+
+def test_generate_getter_var():
+    key = object()
+    correct = 10
+    node, ns = generate_getter_var(key, correct)
+    val = _eval(node, ns)
+    nt.assert_equal(val, correct)
+
+def test_generate_getter_lazy():
+    class FakeManifest:
+        def __init__(self, value):
+            self.value = value
+
+        def get_obj(self):
+            return self.value
+
+    correct = "TEST"
+    manifest = FakeManifest(correct)
+    node, ns = generate_getter_lazy(manifest)
+    val = _eval(node, ns)
+    nt.assert_equal(val, correct)

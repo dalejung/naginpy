@@ -329,3 +329,31 @@ def code_context_subset(code, context, key_code, key_context,
             return
 
     return matched_item
+
+def generate_getter_var(manifest, value, prefix="_AST"):
+    """
+    Generate a Name node that has an obscure name to prevent collisions
+    and points to the value
+    """
+    var_name = '_{prefix}_{id}'.format(prefix=prefix, id=abs(hash(manifest)))
+    getter = ast.Name(id=var_name, ctx=ast.Load())
+    ns_update = {var_name: value}
+    return ast.fix_missing_locations(getter), ns_update
+
+def generate_getter_lazy(manifest, prefix="_AST"):
+    """
+    Generates a manifest.get_obj() call. Uses obscure variable naming
+    """
+    var_name = '_{prefix}_{id}'.format(prefix=prefix, id=abs(hash(manifest)))
+    func = ast.Attribute(
+        value=ast.Name(id=var_name, ctx=ast.Load()),
+        attr="get_obj", ctx=ast.Load()
+    )
+    args = []
+    keywords = []
+
+    getter = ast.Call(func=func, args=args, keywords=keywords, 
+                        starargs=None, kwargs=None)
+    ns_update = {var_name: manifest}
+    return ast.fix_missing_locations(getter), ns_update
+
