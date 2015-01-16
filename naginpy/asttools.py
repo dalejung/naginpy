@@ -216,7 +216,8 @@ class AstGraphWalker(object):
             parent : ast.AST,
             field_name : str,
             field_index : int or None,
-            current_depth : int
+            current_depth : int,
+            location : {parent, field_name, field_index}
         }
 
         field_index is None when field is not a list
@@ -266,13 +267,21 @@ class AstGraphWalker(object):
         if not isinstance(node, ast.AST):
             return
 
-        yield {
-            'node': node,
+        location = {
             'parent': parent,
             'field_name': field_name,
-            'field_index': i,
-            'depth': self.current_depth
+            'field_index': i
         }
+
+        item = {
+            'node': node,
+            'depth': self.current_depth,
+            'location': location
+        }
+
+        item.update(location)
+        yield item
+
         yield from self.visit(node) 
 
 def graph_walk(code):
