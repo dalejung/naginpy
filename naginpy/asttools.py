@@ -297,7 +297,10 @@ def _value_equal(left, right):
     if isinstance(left, np.ndarray):
         return np.all(left == right)
 
-    return left == right
+    try:
+        return left == right
+    except:
+        return False
 
 def code_context_subset(code, context, key_code, key_context,
                     ignore_var_names=False):

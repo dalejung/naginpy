@@ -431,9 +431,78 @@ def test_manifest_partial_multi():
     sub = _manifest("(x + y)", {'x': 3, 'y': 4})
     sub2 = _manifest("(x + y)", {'x': 1, 'y': 2})
 
-    # note we are purposely giving wrong answer
     items = {sub: sub.eval(), sub2: sub2.eval()}
 
     # this errors since we don't multi match on the ast_contains
     test = parent.eval_with(items, ignore_var_names=True)
+    nt.assert_equal(test, 11)
 
+    items = {sub: sub, sub2: sub2}
+
+    test = parent.eval_with(items, ignore_var_names=True)
+    nt.assert_equal(test, 11)
+
+    # pass in only manifest
+    test = parent.eval_with([sub, sub2], ignore_var_names=True)
+    nt.assert_equal(test, 11)
+
+def test_eval_with_execution_count():
+    class Value:
+        """ value that keeps track of when it is used in ops """
+        def __init__(self, value):
+            self.value = value
+            self.op_count = 0
+
+        def get_obj(self):
+            return self.value
+
+        def __add__(self, other):
+            self.op_count += 1
+            return self.value + other
+
+        def __radd__(self, other):
+            self.op_count += 1
+            return self.value + other
+
+    ns = {
+        'a': Value(1),
+        'b': Value(2),
+        'c': Value(3),
+        'd': Value(4),
+        'e': Value(5)
+    }
+    parent = _manifest("e + (c + d) + (a + b)", ns)
+
+    # we are expecting these to match by execution context
+    sub = _manifest("(a + b)", ns)
+    sub2 = _manifest("(c + d)", ns)
+
+    items = {sub: sub.eval(), sub2: sub2.eval()}
+
+    # a through d should have been used
+    nt.assert_equal(ns['a'].op_count, 1)
+    nt.assert_equal(ns['b'].op_count, 1)
+    nt.assert_equal(ns['c'].op_count, 1)
+    nt.assert_equal(ns['d'].op_count, 1)
+    nt.assert_equal(ns['e'].op_count, 0)
+
+    res = parent.eval_with(items)
+    nt.assert_equal(res, 1+2+3+4+5)
+
+    # make sure we did not use the Value again
+    nt.assert_equal(ns['a'].op_count, 1)
+    nt.assert_equal(ns['b'].op_count, 1)
+    nt.assert_equal(ns['c'].op_count, 1)
+    nt.assert_equal(ns['d'].op_count, 1)
+    nt.assert_equal(ns['e'].op_count, 1) # gets used
+
+    # normal non partial eval
+    res = parent.eval()
+    nt.assert_equal(res, 1+2+3+4+5)
+
+    # since we did a full eval, everything got run again
+    nt.assert_equal(ns['a'].op_count, 2)
+    nt.assert_equal(ns['b'].op_count, 2)
+    nt.assert_equal(ns['c'].op_count, 2)
+    nt.assert_equal(ns['d'].op_count, 2)
+    nt.assert_equal(ns['e'].op_count, 2) # gets used

@@ -163,6 +163,9 @@ class Manifest(object):
             value.
 
         """
+        if isinstance(items, list):
+            items = dict(zip(items, items))
+
         working_ast = self.expression.copy(mutable=True)
         working_ns = self.context.copy(mutable=True)
 
