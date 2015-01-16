@@ -181,7 +181,7 @@ class ExecutionContext(object):
     Though this is more of a question of whether to automatically pickle
     small objects that don't explicitly handle special_eval
     """
-    def __init__(self, data=None):
+    def __init__(self, data=None, mutable=False):
         if data is None:
             data = {}
 
@@ -194,6 +194,12 @@ class ExecutionContext(object):
         self._validate_data(data)
 
         self.data = data
+        self.mutable = mutable
+
+    def copy(self, mutable=False):
+        data = self.data.copy()
+        obj = self.__class__(data, mutable=mutable)
+        return obj
 
     @property
     def stateless(self):
@@ -241,13 +247,13 @@ class ExecutionContext(object):
         return data
 
     @classmethod
-    def from_ns(cls, ns, keys=None):
+    def from_ns(cls, ns, keys=None, mutable=False):
         """
         Will wrap a namespace and create ContextObjects that point to the
         object in kernel.
         """
         data = cls._wrap_context(ns, keys=keys)
-        return cls(data)
+        return cls(data, mutable=mutable)
 
     def keys(self):
         return self.data.keys()
@@ -263,6 +269,14 @@ class ExecutionContext(object):
 
     def __getitem__(self, key):
         return self.data[key]
+
+    def __setitem__(self, key, value):
+        if not self.mutable:
+            raise Exception("This ExecutionContext is immutable")
+
+        if not isinstance(value, ManifestABC):
+            raise TypeError("Must be ManifestABC")
+        self.data[key] = value
 
     def extract(self):
         """

@@ -303,6 +303,24 @@ class TestExecutionContext(TestCase):
         correct = "d=ScalarObject(13), str=ScalarObject('string_Test')"
         nt.assert_equal(exec_context.key, correct)
 
+    def test_mutable(self):
+        context = {
+            'd': 13,
+            'str': 'string_Test'
+        }
+
+        exec_context = ExecutionContext.from_ns(context)
+        with nt.assert_raises(Exception):
+            exec_context['test'] = 123
+
+        # works fine
+        exec_context = ExecutionContext.from_ns(context, mutable=True)
+        exec_context['test'] = ScalarObject(123)
+
+        # will only accept ManifestABC types. might consider autoboxing?
+        with nt.assert_raises(TypeError):
+            exec_context['bad'] = 123
+
 class TestModuleContext(TestCase):
     def test_module_context(self):
         import pandas.util.testing as tm
