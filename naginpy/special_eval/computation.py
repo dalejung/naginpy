@@ -117,23 +117,3 @@ class ComputationManager(object):
 
         ns_update = {'__defer_manager__': self}
         return ast.fix_missing_locations(getter), ns_update
-
-
-
-def _generate_getter_node(self, source_hash, context):
-    """
-    """
-    func = ast.Attribute(
-        value=ast.Name(id="__defer_manager__", ctx=ast.Load()),
-        attr="value", ctx=ast.Load()
-    )
-    args = [ast.Bytes(s=source_hash)]
-    keywords = [ast.keyword(
-        arg=k,
-        value=ast.Name(id=k, ctx=ast.Load()))
-        for k in context.keys()
-    ]
-
-    getter = ast.Call(func=func, args=args, keywords=keywords, 
-                        starargs=None, kwargs=None)
-    return ast.fix_missing_locations(getter)
