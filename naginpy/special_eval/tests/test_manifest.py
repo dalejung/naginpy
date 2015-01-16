@@ -507,7 +507,7 @@ def test_eval_with_execution_count():
     nt.assert_equal(ns['d'].op_count, 2)
     nt.assert_equal(ns['e'].op_count, 2) # gets used
 
-def test_multi_nested_partial():
+def test_expanded_multi_nested_partial():
     # we are expecting these to match by execution context
     ns = {'test1':0, 'test2': 1}
     leaf = _manifest("(test1 + test2)", ns)
