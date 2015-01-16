@@ -87,7 +87,6 @@ class ComputationManager(object):
         context = entry.context
         source_hash = entry.expression.key
 
-        assert isinstance(source_hash, bytes) # md5 digest
         return self._generate_getter_node(source_hash, context)
 
     def _generate_getter_node(self, source_hash, context):
@@ -106,7 +105,7 @@ class ComputationManager(object):
             value=ast.Name(id="__defer_manager__", ctx=ast.Load()),
             attr="value", ctx=ast.Load()
         )
-        args = [ast.Bytes(s=source_hash)]
+        args = [ast.Str(s=source_hash)]
         keywords = [ast.keyword(
             arg=k,
             value=ast.Name(id=k, ctx=ast.Load()))
