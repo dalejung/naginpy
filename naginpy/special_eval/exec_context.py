@@ -255,6 +255,12 @@ class ExecutionContext(object):
         data = cls._wrap_context(ns, keys=keys)
         return cls(data, mutable=mutable)
 
+    def update(self, data, wrap=False):
+        if wrap:
+            data = self._wrap_context(data)
+        for k, v in data.items():
+            self[k] = v
+
     def keys(self):
         return self.data.keys()
 
