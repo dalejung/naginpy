@@ -19,6 +19,7 @@ Where the concepts start and end are still up in the air at this point.
 """
 import ast
 import binascii
+import copy
 import hashlib
 
 from naginpy.asttools import (
@@ -27,6 +28,7 @@ from naginpy.asttools import (
     code_context_subset,
     is_load_name,
     load_names,
+    replace_node,
     _eval,
     _convert_to_expression
 )
@@ -55,7 +57,7 @@ class Expression(object):
     """
     For now default to just using ast fragments.
     """
-    def __init__(self, code):
+    def __init__(self, code, mutable=False):
         if isinstance(code, str):
             code = ast.parse(code, '<expr>', 'eval')
 
@@ -65,6 +67,7 @@ class Expression(object):
             raise Exception("An Expression can only be one logical line."
                             "{0}".format(ast_source(code)))
         self.code = code
+        self.mutable = mutable
 
     def __hash__(self):
         return hash(self.key)
@@ -92,6 +95,17 @@ class Expression(object):
     def load_names(self):
         return load_names(self.code)
 
+    def replace(self, new_node, parent, field_name, field_index):
+        if not self.mutable:
+            raise Exception("This expression is not mutable")
+        replace_node(parent, field_name, field_index, new_node)
+
+    def copy(self, mutable=False):
+        """
+        Note that this creates a deep copy of AST
+        """
+        working_ast = copy.deepcopy(self.code)
+        return self.__class__(working_ast, mutable=mutable)
 
 class Manifest(object):
     """
@@ -109,6 +123,12 @@ class Manifest(object):
         self.expression = expression
         self.context = context
 
+    @property
+    def key(self):
+        expr_key = self.expression.key
+        context_key = self.context.key
+        return "{0}({1})".format(expr_key, context_key)
+
     def __hash__(self):
         return hash(tuple([self.expression, self.context]))
 
@@ -119,8 +139,8 @@ class Manifest(object):
             other_expression = other.expression
             other_context = other.context
         else:
-            raise Exception("Can only compare against other manifest or "
-                            "tuple(expression, context)")
+            raise Exception("Can only compare against other manifest, "
+                            "or tuple(expression, context)")
 
         # note due to how expression is built, other_expression can be
         # the md5 checksum of the source

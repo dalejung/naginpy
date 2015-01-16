@@ -20,6 +20,10 @@ from ..exec_context import (
     get_source_key
 )
 
+from naginpy.asttools import (
+    ast_equal
+)
+
 from .common import ArangeSource
 
 def grab_expression_from_assign(code):
@@ -89,6 +93,7 @@ class TestExpression(TestCase):
 
         expr3 = Expression("np.arange(15)")
         nt.assert_is_instance(expr3.code, ast.Expression)
+
     def test_key(self):
         """ stable hash key """
         source = """
@@ -114,6 +119,51 @@ class TestExpression(TestCase):
         # key also works for equals
         nt.assert_equal(expr1, correct1)
         nt.assert_equal(expr2, correct2)
+
+    def test_copy(self):
+        """
+        test copy
+        """
+        source = """
+        np.arange(20)
+        """
+        source = dedent(source)
+        code = ast.parse(source)
+
+        expr1 = Expression(code.body[0])
+        expr2 = expr1.copy()
+        # equivalent value
+        nt.assert_true(ast_equal(expr1.code, expr2.code))
+        # but not the same
+        nt.assert_is_not(expr1.code, expr2.code)
+        nt.assert_is_not(expr1.code.body, expr2.code.body)
+
+        # mutability
+        nt.assert_false(expr2.mutable)
+
+        expr3 = expr1.copy(mutable=True)
+        nt.assert_true(expr3.mutable)
+
+    def test_mutability(self):
+        """ test immutability """
+        source = """
+        np.arange(20)
+        """
+        source = dedent(source)
+        code = ast.parse(source)
+
+        new_num = ast.Num(n=3)
+
+        expr1 = Expression(code.body[0])
+        with nt.assert_raises_regexp(Exception, "This expression is not mutable"):
+            expr1.replace(new_num, expr1.code.body, 'args', 0)
+
+        expr2 = expr1.copy(mutable=True)
+        expr2.replace(new_num, expr2.code.body, 'args', 0)
+
+        # expr2 was changed
+        nt.assert_false(ast_equal(expr1.code, expr2.code))
+        nt.assert_equal(expr2.get_source(), 'np.arange(3)')
 
 
 class TestManifest(TestCase):
