@@ -98,6 +98,7 @@ class Expression(object):
     def replace(self, new_node, parent, field_name, field_index):
         if not self.mutable:
             raise Exception("This expression is not mutable")
+        self._key = None
         replace_node(parent, field_name, field_index, new_node)
 
     def copy(self, mutable=False):

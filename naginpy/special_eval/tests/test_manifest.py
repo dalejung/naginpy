@@ -159,7 +159,9 @@ class TestExpression(TestCase):
             expr1.replace(new_num, expr1.code.body, 'args', 0)
 
         expr2 = expr1.copy(mutable=True)
+        old_key = expr2.key
         expr2.replace(new_num, expr2.code.body, 'args', 0)
+        nt.assert_not_equal(expr2.key, old_key)
 
         # expr2 was changed
         nt.assert_false(ast_equal(expr1.code, expr2.code))
