@@ -1,7 +1,7 @@
 import ast
 from collections import OrderedDict
 
-from naginpy.asttools import ast_print, replace_node, is_load_name
+from asttools import ast_print, replace_node, is_load_name
 
 from .engine import Engine
 

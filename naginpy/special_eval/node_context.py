@@ -1,6 +1,6 @@
 import ast
 
-from naginpy.asttools import ast_repr
+from asttools import ast_repr
 
 _missing = object()
 

@@ -1,4 +1,4 @@
-from naginpy.asttools import _eval, _exec
+from asttools import _eval, _exec
 
 class Engine(object):
     """

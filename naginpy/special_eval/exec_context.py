@@ -2,10 +2,10 @@ import ast
 import types
 
 import numpy as np
+from asttools import (ast_source, _eval, is_load_name,
+                              _convert_to_expression)
 
 from naginpy.special_eval.manifest_abc import ManifestABC
-from naginpy.asttools import (ast_source, _eval, is_load_name,
-                              _convert_to_expression)
 
 def _hashable(item):
     try:

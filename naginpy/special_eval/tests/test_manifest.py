@@ -7,6 +7,10 @@ import numpy as np
 from numpy.testing import assert_almost_equal
 import nose.tools as nt
 
+from asttools import (
+    ast_equal
+)
+
 from ..manifest import (
     Expression,
     Manifest,
@@ -18,10 +22,6 @@ from ..exec_context import (
     SourceObject,
     ExecutionContext,
     get_source_key
-)
-
-from naginpy.asttools import (
-    ast_equal
 )
 
 from .common import ArangeSource

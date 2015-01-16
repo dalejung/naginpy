@@ -1,7 +1,7 @@
 from collections import OrderedDict
 import ast
 
-from .asttools import is_load_name
+from asttools import is_load_name
 
 class AstGrapher(object):
     """

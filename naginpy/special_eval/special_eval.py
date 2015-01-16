@@ -1,8 +1,9 @@
 import ast
 from functools import partial
 
+from asttools import ast_repr, _eval
+
 from ..graph import GatherGrapher
-from ..asttools import ast_repr, _eval
 from .node_context import NodeContextManager
 
 

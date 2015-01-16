@@ -2,7 +2,7 @@ import ast
 
 from earthdragon.tools.timer import Timer
 
-from naginpy.asttools import ast_source, _eval
+from asttools import ast_source, _eval
 from .manifest import Manifest, Expression, _manifest
 from .exec_context import ExecutionContext
 

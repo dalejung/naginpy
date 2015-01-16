@@ -22,7 +22,7 @@ import binascii
 import copy
 import hashlib
 
-from naginpy.asttools import (
+from asttools import (
     ast_source,
     code_context_subset,
     is_load_name,

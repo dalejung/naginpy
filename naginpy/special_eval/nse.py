@@ -3,8 +3,9 @@ Non-Standard Evaluation
 """
 import ast
 
+from asttools import ast_print, ast_source
+
 from .engine import Engine
-from ..asttools import ast_print, ast_source
 
 def nse(func):
     func.__nse__ = True
