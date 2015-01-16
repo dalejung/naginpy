@@ -161,6 +161,21 @@ def test_ast_contains_ignore_names():
     test = ast.parse(source2)
     nt.assert_true(ast_contains(mod, test, ignore_var_names=True))
 
+def test_ast_contains_ignore_names_multi():
+    """
+    Note that we can actually match multiple times, especially if we ignore
+    names. ast_contains need to be changed to yield a generator.
+    """
+    source = """
+    (a + b) + (c + d) + (e + f)
+    """
+    mod = ast.parse(dedent(source))
+
+    source2 = """(x + y)"""
+    test = ast.parse(source2)
+    matches = list(ast_contains(mod, test, ignore_var_names=True))
+    nt.assert_equal(len(matches), 3)
+
 def test_ast_graph_walk():
     source = """
     test(np.random.randn(10, 11))

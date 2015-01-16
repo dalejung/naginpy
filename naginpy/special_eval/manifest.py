@@ -28,6 +28,7 @@ from naginpy.asttools import (
     code_context_subset,
     is_load_name,
     load_names,
+    generate_getter_var,
     replace_node,
     _eval,
     _convert_to_expression
@@ -155,6 +156,32 @@ class Manifest(object):
 
     def eval(self):
         return _eval(self.expression.code, self.context.extract())
+
+    def eval_with(self, items, ignore_var_names=False):
+        """
+        items : dict (Manifest => value)
+            Will replace the matching Manifest partial with the evaluated
+            value.
+
+        """
+        working_ast = self.expression.copy(mutable=True)
+        working_ns = self.context.copy(mutable=True)
+
+        for manifest, value in items.items():
+            print(manifest.key)
+            item = code_context_subset(working_ast.code, working_ns,
+                                    manifest.expression.code, manifest.context,
+                                       ignore_var_names=ignore_var_names)
+            if item is None:
+                raise Exception("{0} was not found".format(manifest.key))
+
+            getter, ns_update = generate_getter_var(manifest, value)
+
+            working_ast.replace(getter, **item['location'])
+            working_ns.update(ns_update, wrap=True)
+
+        val = Manifest(working_ast, working_ns).eval()
+        return val
 
     def get_obj(self):
         return self.eval()

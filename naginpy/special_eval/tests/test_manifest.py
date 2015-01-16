@@ -402,3 +402,38 @@ def test_fragment_order_of_ops():
     manifest2 = _manifest("b + a + (a + b)", ns)
     nt.assert_not_in(manifest2, manifest)
 
+def test_manifest_partial():
+    """
+    Mechanism where the take a Manifest and supply a partial value via
+    another Manifest.
+    """
+    ns = {'a': 1, 'b': 2, 'c': 3, 'd': 4}
+    parent = _manifest("a + (c + d)", ns)
+
+    sub = _manifest("(x + y)", {'x': 3, 'y': 4})
+
+    # note we are purposely giving wrong answer
+    items = {sub: 3}
+    test = parent.eval_with(items, ignore_var_names=True)
+    nt.assert_equal(test, 4)
+
+    # parent unaffected
+    nt.assert_equal(parent.eval(), 8)
+
+    # sub also un affected
+    nt.assert_equal(sub.eval(), 7)
+
+def test_manifest_partial_multi():
+    ns = {'a': 1, 'b': 2, 'c': 3, 'd': 4}
+    parent = _manifest("a + (c + d) + (a + b)", ns)
+
+    # we are expecting these to match by execution context
+    sub = _manifest("(x + y)", {'x': 3, 'y': 4})
+    sub2 = _manifest("(x + y)", {'x': 1, 'y': 2})
+
+    # note we are purposely giving wrong answer
+    items = {sub: sub.eval(), sub2: sub2.eval()}
+
+    # this errors since we don't multi match on the ast_contains
+    test = parent.eval_with(items, ignore_var_names=True)
+
