@@ -1,10 +1,9 @@
 import ast
 from collections import OrderedDict
 
-from naginpy.asttools import ast_print, ast_source, replace_node, is_load_name
+from naginpy.asttools import ast_print, replace_node, is_load_name
 
-from .special_eval import SpecialEval
-from .engine import Engine, NormalEval
+from .engine import Engine
 
 
 class DataCacheEngine(Engine):
