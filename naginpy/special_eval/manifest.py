@@ -24,7 +24,6 @@ import hashlib
 
 from naginpy.asttools import (
     ast_source,
-    ast_contains,
     code_context_subset,
     is_load_name,
     load_names,
@@ -168,17 +167,19 @@ class Manifest(object):
         working_ns = self.context.copy(mutable=True)
 
         for manifest, value in items.items():
-            print(manifest.key)
-            item = code_context_subset(working_ast.code, working_ns,
+            matches = code_context_subset(working_ast.code, working_ns,
                                     manifest.expression.code, manifest.context,
                                        ignore_var_names=ignore_var_names)
-            if item is None:
+            matched = False
+            for item in matches:
+                matched = True
+                getter, ns_update = generate_getter_var(manifest, value)
+
+                working_ast.replace(getter, **item['location'])
+                working_ns.update(ns_update, wrap=True)
+
+            if not matched:
                 raise Exception("{0} was not found".format(manifest.key))
-
-            getter, ns_update = generate_getter_var(manifest, value)
-
-            working_ast.replace(getter, **item['location'])
-            working_ns.update(ns_update, wrap=True)
 
         val = Manifest(working_ast, working_ns).eval()
         return val
@@ -196,13 +197,13 @@ class Manifest(object):
 
         key_code = key.expression.code
         key_context = key.context
-        return code_context_subset(code, context, key_code, key_context,
+        yield from code_context_subset(code, context, key_code, key_context,
                                ignore_var_names=ignore_var_names)
 
     def __contains__(self, other):
-        matched_item = self.subset(other, ignore_var_names=True)
+        matched_item = list(self.subset(other, ignore_var_names=True))
 
-        if matched_item is None:
+        if not matched_item:
             return False
 
         return True

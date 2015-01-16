@@ -200,7 +200,7 @@ def ast_contains(code, fragment, ignore_var_names=False):
     for item in graph_walk(code):
         node = item['node']
         if ast_equal(node, fragment, ignore_var_names=ignore_var_names):
-            return item
+            yield item
 
     return False
 
@@ -315,29 +315,31 @@ def code_context_subset(code, context, key_code, key_context,
         }
     """
     # check expresion
-    matched_item = ast_contains(code, key_code,
+    matches = ast_contains(code, key_code,
                                     ignore_var_names=ignore_var_names)
-    if not matched_item:
-        return
+    for matched_item in matches:
+        matched = matched_item['node']
+        if code_context_match(matched, context, key_code, key_context):
+            yield matched_item
 
-    matched_parent = matched_item['node']
+def code_context_match(matched, matched_context, key_code, key_context):
 
     # at this point the load names should be equal for each code
     # fragment. they are equal by position. load_names does not
     # have a set order, but a stable order per same tree structure.
     key_load_names = load_names(key_code)
-    matched_load_names = load_names(matched_parent)
+    matched_load_names = load_names(matched)
     if len(key_load_names) != len(matched_load_names):
         return
 
     # check context.
     for pk, fk in zip(matched_load_names, key_load_names):
-        pv = context[pk]
+        pv = matched_context[pk]
         fv = key_context[fk]
         if not _value_equal(pv, fv):
             return
 
-    return matched_item
+    return True
 
 def generate_getter_var(manifest, value, prefix="_AST"):
     """

@@ -86,25 +86,25 @@ def test_ast_contains():
 
     source2 = """np.random.randn(10, 11)"""
     test = ast.parse(source2, mode='eval').body
-    nt.assert_true(ast_contains(code1, test))
+    nt.assert_true(list(ast_contains(code1, test))[0])
 
     test = ast.parse("10", mode='eval').body
-    nt.assert_true(ast_contains(code1, test))
+    nt.assert_true(list(ast_contains(code1, test))[0])
 
     test = ast.parse("test2", mode='eval').body
-    nt.assert_true(ast_contains(code1, test))
+    nt.assert_true(list(ast_contains(code1, test))[0])
 
     test = ast.parse("np.random.randn", mode='eval').body
-    nt.assert_true(ast_contains(code1, test))
+    nt.assert_true(list(ast_contains(code1, test))[0])
 
     test = ast.parse("test2/99", mode='eval').body
-    nt.assert_true(ast_contains(code1, test))
+    nt.assert_true(list(ast_contains(code1, test))[0])
 
     # False. Not that this isn't about a textual subset.
     # random.randn means nothing without np. it implies a 
     # top level random module
     test = ast.parse("random.randn", mode='eval').body
-    nt.assert_false(ast_contains(code1, test))
+    nt.assert_false(list(ast_contains(code1, test)))
 
     # test against a module.
     source = """
@@ -115,7 +115,7 @@ def test_ast_contains():
 
     source2 = """np.random.randn(10, 11)"""
     test = ast.parse(source2, mode='eval').body
-    nt.assert_true(ast_contains(mod, test))
+    nt.assert_true(list(ast_contains(mod, test))[0])
 
 def test_ast_contains_expression():
     """
@@ -131,13 +131,13 @@ def test_ast_contains_expression():
     # expression compiled as module work sfine
     source2 = """np.random.randn(10, 11)"""
     test = ast.parse(source2)
-    nt.assert_true(ast_contains(mod, test))
+    nt.assert_true(list(ast_contains(mod, test))[0])
 
     # assignment is a nono
     with nt.assert_raises_regexp(Exception, "Fragment must be an expression"):
         source2 = """a = np.random.randn(10, 11)"""
         test = ast.parse(source2)
-        ast_contains(mod, test)
+        list(ast_contains(mod, test))
 
 def test_ast_contains_ignore_names():
     # test against a module.
@@ -149,17 +149,17 @@ def test_ast_contains_ignore_names():
     # rename np to test
     source2 = """test.random.randn(10, 11)"""
     test = ast.parse(source2)
-    nt.assert_true(ast_contains(mod, test, ignore_var_names=True))
+    nt.assert_true(list(ast_contains(mod, test, ignore_var_names=True))[0])
 
     # note that only Load(ctx.Load) ids will be ignored
     source2 = """test.text"""
     test = ast.parse(source2)
-    nt.assert_false(ast_contains(mod, test, ignore_var_names=True))
+    nt.assert_false(list(ast_contains(mod, test, ignore_var_names=True)))
 
     # dumb example. single Name will always match
     source2 = """anything"""
     test = ast.parse(source2)
-    nt.assert_true(ast_contains(mod, test, ignore_var_names=True))
+    nt.assert_true(list(ast_contains(mod, test, ignore_var_names=True))[0])
 
 def test_ast_contains_ignore_names_multi():
     """
@@ -227,12 +227,15 @@ def test_code_context_subset():
     child_ns['blah'] = ns['df']
     child_code = ast.parse("np.log(blah+10)") # note that df was renamed blah
 
-    nt.assert_is_none(code_context_subset(code, ns, child_code, child_ns,
-                                        ignore_var_names=False))
+    nt.assert_false(list(code_context_subset(code, ns, child_code, child_ns,
+                                        ignore_var_names=False)))
 
     # ignoring the var names should get us our match
-    item = code_context_subset(code, ns, child_code, child_ns,
+    items = code_context_subset(code, ns, child_code, child_ns,
                             ignore_var_names=True)
+    items = list(items)
+    item = items[0]
+    nt.assert_equal(len(items), 1)
     nt.assert_is_not_none(item)
 
     field_name = 'args'
@@ -242,6 +245,72 @@ def test_code_context_subset():
     nt.assert_is(item['parent'], code.body)
     nt.assert_equal(item['field_name'], field_name)
     nt.assert_equal(item['field_index'], field_index)
+
+def test_code_context_subset_by_value():
+    """
+    test that when we have multiple ast matches,
+    we properly test by value.
+    previously ast_contains only returned first match, and so 
+    code_context_subset wouldn't always return if the value match was
+    on the second match
+    """
+    ns = {
+        'a': 1,
+        'b': 2,
+        'c': 3,
+        'd': 4
+    }
+
+    source = "(a + b) + (c + d)"
+    code = ast.parse(dedent(source), mode='eval')
+
+    # use blah instead of df. same code.
+    child_ns = {
+        'x': 1,
+        'y': 2
+    }
+
+    child_code = ast.parse("x + y") # note that df was renamed blah
+    res = list(code_context_subset(code, ns, child_code, child_ns,
+                                        ignore_var_names=True))
+
+    # matches first group by value
+    nt.assert_equal(ast_source(res[0]['node']), '(a + b)')
+
+    # try to match second group
+    child_ns = {
+        'x': 3,
+        'y': 4
+    }
+    res = list(code_context_subset(code, ns, child_code, child_ns,
+                                        ignore_var_names=True))
+    # matched the second group
+    nt.assert_equal(ast_source(res[0]['node']), '(c + d)')
+
+def test_code_context_subset_match_multi():
+    # try to match multiple groups
+    ns = {
+        'a': 1,
+        'b': 2,
+        'c': 1,
+        'd': 2
+    }
+
+    source = "(a + b) + (c + d)"
+    code = ast.parse(dedent(source), mode='eval')
+
+    child_ns = {
+        'x': 1,
+        'y': 2
+    }
+
+    child_code = ast.parse("x + y") # note that df was renamed blah
+    res = list(code_context_subset(code, ns, child_code, child_ns,
+                                        ignore_var_names=True))
+
+    test = list(map(lambda x: ast_source(x['node']), res))
+    correct = ['(a + b)', '(c + d)']
+    nt.assert_count_equal(test, correct)
 
 def test_generate_getter_var():
     key = object()
