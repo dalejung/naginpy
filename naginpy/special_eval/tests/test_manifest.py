@@ -506,3 +506,24 @@ def test_eval_with_execution_count():
     nt.assert_equal(ns['c'].op_count, 2)
     nt.assert_equal(ns['d'].op_count, 2)
     nt.assert_equal(ns['e'].op_count, 2) # gets used
+
+def test_multi_nested_partial():
+    # we are expecting these to match by execution context
+    ns = {'test1':0, 'test2': 1}
+    leaf = _manifest("(test1 + test2)", ns)
+
+    ns = {'x':1, 'y': leaf}
+    xy = _manifest("(x + y)", ns)
+
+    ns = {'a': 1, 'b': xy}
+    sub = _manifest("(a + b)", ns)
+
+    parent_ns = {'e': 3, 'a': sub}
+    parent = _manifest("e + a", parent_ns)
+
+    expanded = parent.expand()
+    nt.assert_count_equal(expanded.context.keys(),
+                          ['a', 'e', 'x', 'test1', 'test2'])
+    nt.assert_equal(expanded.expression.get_source(),
+                    "(e + (a + (x + (test1 + test2))))")
+    nt.assert_equal(expanded.eval(), 6)

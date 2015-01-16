@@ -190,6 +190,35 @@ class Manifest(object):
     def get_obj(self):
         return self.eval()
 
+    def copy(self, mutable=False):
+        working_ast = self.expression.copy(mutable=True)
+        working_ns = self.context.copy(mutable=True)
+        wm = Manifest(working_ast, working_ns)
+        return wm
+
+    def expand(self):
+        wm = self.copy(mutable=True)
+
+        for k, v in self.context.items():
+            if not isinstance(v, Manifest):
+                continue
+
+            var = ast.parse(k, mode='eval')
+            key = _manifest(var, {k: v})
+            matches = wm.subset(key)
+
+            # replace with expanded partial. that partial might have its own
+            v = v.expand()
+            for match in matches:
+                new_node = v.expression.code.body
+                wm.expression.replace(new_node, **match['location'])
+                wm.context.update(v.context)
+
+            if k not in v.context:
+                del wm.context[k]
+
+        return wm
+
     @property
     def stateless(self):
         return self.context.stateless

@@ -284,6 +284,12 @@ class ExecutionContext(object):
             raise TypeError("Must be ManifestABC")
         self.data[key] = value
 
+    def __delitem__(self, key):
+        if not self.mutable:
+            raise Exception("This ExecutionContext is immutable")
+
+        del self.data[key]
+
     def extract(self):
         """
         Get the actual values from execution context
