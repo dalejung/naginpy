@@ -197,6 +197,23 @@ class Manifest(object):
         return wm
 
     def expand(self):
+        """
+        Takes a Manifest with Manifests in its ExecutionContext
+        and substitutes in the sub Manifest.
+
+        Example:
+
+        Manifest1:
+            A + B
+            {A: 1, B: Manifest2}
+        Manifest2:
+            C + D
+            {C: 2, D: 3}
+
+        Manifest1.expand():
+            A + (C + D)
+            {A: 1, C:2, D:3}
+        """
         wm = self.copy(mutable=True)
 
         for k, v in self.context.items():
