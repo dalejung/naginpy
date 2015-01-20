@@ -94,7 +94,7 @@ function ever defined.
 
 # 01-19-15
 
-## maniest equivalence
+## manifest equivalence
 
 Been playing with how to equivalize expression that are semantically the same, but not literally equivalent.
 
