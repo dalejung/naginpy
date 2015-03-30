@@ -283,3 +283,57 @@ So even in the message sending layout, where we really can't use intermediate va
 Outside of some sort of usefulness, one of the reason for this write once use anywhere is that they can be tested against each other. If we have production systems, we can test the output series against each other by switching flags. Even if we are given an array of data, there is no reason we couldn't break that up into events that feed into a live algo or networked system of components. If there's deviation based on conveyance, then we can't test.
 
 This all goes in line with the simple dumb case of having some aggregate statistics, pushing a button to add it to a dashboard, and having it automatically update with new data.
+
+# composability
+
+So one of the nice things about viewing things functional is the lack of side effects here and composability. This gives us so much flexibility in building out equivalent systems.
+
+```
+statA = frp.rolling(30).slow_stat1()
+statB = frp.rolling(30).slow_stat2()
+
+signal = frp.crossover(statA > statB)
+```
+
+Note that signal itself is just another system. Let's imagine that `slow_stat` is compute intensive. We might want to separate it to it's own CPU. Because everything is pure, we could take the internal system which would be closer to:
+
+```
+Crossover
+  Rolling
+    slow_stat1
+    slow_stat2
+```
+
+To something like
+```
+Rolling
+  slow_stat1
+
+Rolling
+  slow_stat2
+
+Crossover
+```
+
+Which would be 3 components. I wonder if it's possible to have it be more crazy like:
+
+
+```
+Crossover
+  Rolling
+    slow_stat1
+
+Rolling
+  slow_stat2
+```
+
+Where one stat is computed locally and we wait for the other event to test signal. Seems like it should be fine...
+
+Also of note, due to pureness we can swap out sections of the compute graph for optimized versions. A good example re the rolling window functions which usually have a intermediate accounting speed up. So we could easily replace
+`rolling(30).mean()` with `RollingMean(30)` which wouldn't re-sum across the window.
+
+Again, these different configurations are all meant to be equivalent, so they can be tested against each other. And each part can be switch out.
+
+The above crossover example is interesting. Crossover has two inputs streams. Can one be wired up to be an array and the other an event listener? Either way, the evented objects would have the streams ID and offset so they could be matched up. I suppose in that sense, the Crossover would default to live, and then just treat the array ihput as an event source.
+
+Which brings up bouncebox, previous I had done stuff with this where you could subscribe to all events, event types, or a specific stream. Which actually is essentially like reactive streams. I have to go see whether I made it a requirement that you specify the stream first. Essentially for somethign like crossover, you'd have to give it stream object that was revisionable. Back then I didn't know what this type of stuff was called.
