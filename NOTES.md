@@ -224,3 +224,62 @@ if I were to just execute the for loop itself, I might require a special DataFra
 2. We can parse and run the for loop ourselves. Not only does this keep us from juggling a proxy dataframe object, but it allows us to do the kind of optimizations found above. 
 
 Though to be fair, a deferringdataframe could have done the above optimizations as well. In reality, a lot of the theoretical DDF functionality would be replicated via the special eval incremental eval with a metadata engine, and vice versa. It's just that the special eval stuff is more comprehensive.
+
+03-30-15
+
+# reactive-ish
+
+I'm not 100% on the terminology. But if you imagine a world where arrays are viewed as immutable streams of events. Then each stream input can be versionined. Now then imagine that all operations on such streams know how to handle streams as both events and arrays. If both these things are true, then something like this:
+
+```python
+positive_sum_30 = frp.rolling(30).filter(lambda x: x > 0).sum()
+```
+
+Can be viewed as both a vector and live system. `positive_sum_30` is itself a TimeSeries, sliding window func, a live system. Or at least it should be. You should be able to pulse that system with an Event and get that aggregate system back. If you have the whole array, you should be able to run this at the same speed as normal vectorized funcs. At that point, it should be able to be turned live. These systems should be able to store state as well.
+
+Take something like a system that is current to yesterdays data. 
+
+```python
+
+# versioned data
+data = History('AAPL')
+stale_data = data.ix[:"2015-03-25"]
+new_data = data.ix["2015-03-25":]
+
+positive_sum_30 = frp.rolling(30).filter(lambda x: x > 0).sum()
+
+psum = positive_sum_30.copy()
+
+test1 = psum(stale_data)
+
+psum2 = positive_sum_30.copy()
+test2 = []
+for evt in stale_data:
+  out = psum2(evt)
+  test2.append(out)
+
+# since History returns an immutable versioned stream
+assert test1 == test2
+
+# whatever internal bookkeeping needed should be the same
+# for something like this, the only internal state would be the current sum and the last 30.
+# something interesting is that if you have access to the entire array, you don't keep the last 30
+# you just see what's leaving the window by offset.
+# so its state would be derived.
+assert psum.state == psum2.state
+```
+
+Now, since the data is versioned. Systems that are up to date to a certain time can all be interchanged regardless of how you got there. You could:
+
+1. persisted the system at t
+2. Take a system persisted at t-n and then playback events till t
+3. Take a blank system and send an array of 0->t
+4. Take a system at t-n, and send an array of data for t-n->t
+
+Note that the idea is to be able to have multiple correct implementations for the same "system". In that way we view computation like transducer in that they are a process. Imagine that you split up each component into message sending components using rabbitmq. So Rolling would keep the data buffer and either send window slices, or send the events with some type of end event for the window, filter would either gate the events or just send the bool. Now the quesiton is, does the above system sum the wihndow, or wait for 30 values. obv in this case that it is each window. So filter itself would need to send some sort of end. Then sum would sum and we'd aggregate that output on some other listener.
+
+So even in the message sending layout, where we really can't use intermediate values to speed up computation since there is process isolation, there are different implementations. Do we send whole window slices of data, or send reactive type event streams. Both of them would need some sort of ID/offset so the result aggregate could order them since there's no expectation of ordering this model. Also, note that you could have split the components into any configuration of meta components i.e. put filter/sum into the same component.
+
+Outside of some sort of usefulness, one of the reason for this write once use anywhere is that they can be tested against each other. If we have production systems, we can test the output series against each other by switching flags. Even if we are given an array of data, there is no reason we couldn't break that up into events that feed into a live algo or networked system of components. If there's deviation based on conveyance, then we can't test.
+
+This all goes in line with the simple dumb case of having some aggregate statistics, pushing a button to add it to a dashboard, and having it automatically update with new data.
