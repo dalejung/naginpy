@@ -6,6 +6,10 @@ Currently this is all prototype phase and feels like multiple pythons eating the
 
 [Original blabbings on this stuff](https://github.com/dalejung/edamame)
 
+I need to collate notes and organize. naginpy, quantreactor, edamame, etc are kind of parts of a larger thing.
+
+[free flow notes](https://github.com/dalejung/naginpy/blob/master/NOTES.md)
+
 # Plan
 
 **Interactive/Import Engine**
