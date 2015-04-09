@@ -337,3 +337,25 @@ Again, these different configurations are all meant to be equivalent, so they ca
 The above crossover example is interesting. Crossover has two inputs streams. Can one be wired up to be an array and the other an event listener? Either way, the evented objects would have the streams ID and offset so they could be matched up. I suppose in that sense, the Crossover would default to live, and then just treat the array ihput as an event source.
 
 Which brings up bouncebox, previous I had done stuff with this where you could subscribe to all events, event types, or a specific stream. Which actually is essentially like reactive streams. I have to go see whether I made it a requirement that you specify the stream first. Essentially for somethign like crossover, you'd have to give it stream object that was revisionable. Back then I didn't know what this type of stuff was called.
+
+# 04-09-15
+
+## Lab framework vs software development
+
+Personally, I'm not a huge fan of using methods. I like the R way of shoving functions into the environment, essentially doing an `from xxx import *`. This idiom is generally frowned upon in python, and for normal development I tend to agree. However, for something like a lab environment where we care about fast iteration and ease of use, not having to explicitly import your toolset is nice. 
+
+Normally we handle this in python by using methods. The pandas DataFrame object has a lot of methods which act like its environment. This isn't terrible as something like `df.tail()` is more pleasent than `tail(df)`, however the DataFrame namespace has exploded and not everything makes sense as a DataFrame method. Also, with something like R's pipe-forward mechanics, it's not really a syntactic improvement. Given a certain level of type annotations, a pipe-forward semantic could autocomplete only the functions that take DataFrames as arguments. Feels a bit like haskell.
+
+So then the other part of the issue is that exploding a bunch of names into the local namespace is generally a bad software practice because it's not clear where the name is coming from. Also, having multiple star imports can lead to shadowing when the later import updates and adds a used name.
+
+However, in a way the partial evaluation and manifest has solved this issue. If during the execution of a file/interactive session, we store the qualified name of the function, then we have a record of which funtion we meant. In reality, we don't often mean to create a symbolic relationship when calling a function, we mean to call a specific function. Either way, we have the information and the frameowrk available to create an overall execution manifest for a module. Maybe for each run we can just store what method was called and then warn if we're changing? Not entirely sure the process here, just know that this is a tractable problem.
+
+An example workflow could be that:
+
+1) We create the notion of namespace providers.
+2) Users call `require(some_lib)` that injects all the names in.
+3) When the do partial eval, those functions from `some_lib` will essentially have the qualified path of `somelib.function`. Note that this isn't the true qualified path, this is to protect us from internal changes within `somelib`
+4) This data is persisted somewhere. Either anontating the file or a separate file.
+
+So in this sense, code can exist without its import statements. This goes in line with the whole cell publishing idea, where a block of code should know how to recreate its execution environment.
+
