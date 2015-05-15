@@ -358,4 +358,3 @@ An example workflow could be that:
 4) This data is persisted somewhere. Either anontating the file or a separate file.
 
 So in this sense, code can exist without its import statements. This goes in line with the whole cell publishing idea, where a block of code should know how to recreate its execution environment.
-
