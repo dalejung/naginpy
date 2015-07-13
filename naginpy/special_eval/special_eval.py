@@ -103,7 +103,7 @@ class SpecialEval(object):
             try:
                 parent, field, field_index = grapher.parent(node)
                 depth = grapher.depth[node]
-            except:
+            except KeyError:
                 break
 
             if node in self.context_manager:
