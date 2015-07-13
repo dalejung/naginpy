@@ -3,6 +3,7 @@ import imp;
 imp.reload(defer)
 from ..defer import *
 from ..special_eval import SpecialEval
+from ..engine import Engine, NormalEval
 
 class Dale:
     def _handle_defer(self, type, arg, *args, **kwargs):
@@ -30,12 +31,6 @@ class Op:
     def __call__(self, *args, **kwargs):
         return args
 
-
-text = """
-l = dale.tail(dale)
-"""
-
-code = ast.parse(text)
 
 class DeferEval(SpecialEval):
 
@@ -71,13 +66,19 @@ class DeferEval(SpecialEval):
 
         return obj._handle_defer(type, arg)
 
+text = """
+l = dale.tail(dale)
+"""
+
+code = ast.parse(text)
+
 
 dale = Dale()
 ns = {
     'dale':dale
 }
 
-grapher = DeferEval(code, ns)
+grapher = DeferEval(code, ns, engines=[NormalEval()])
 grapher.set_debug()
 out = grapher.process()
 print("\n".join(map(str, out)))
