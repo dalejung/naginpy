@@ -7,6 +7,9 @@ setup(
     name=DISTNAME,
     version=FULLVERSION,
     packages=['naginpy'],
+    install_requires = [
+        'asttools',
+    ],
     url='http://github.com/dalejung/naginpy/',
     license='BSD',
     author='Dale Jung',

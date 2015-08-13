@@ -1,0 +1,12 @@
+language: python
+
+python:
+  - "3.4"
+
+# command to install dependencies
+install:
+  - ./ci_build.sh
+
+
+# command to run tests
+script: nosetests
