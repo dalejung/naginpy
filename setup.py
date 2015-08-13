@@ -9,6 +9,7 @@ setup(
     packages=['naginpy'],
     install_requires = [
         'asttools',
+        'earthdragon',
     ],
     url='http://github.com/dalejung/naginpy/',
     license='BSD',
