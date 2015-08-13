@@ -8,8 +8,6 @@ import pandas as pd
 import pandas.util.testing as tm
 import numpy as np
 
-from earthdragon.tools.timer import Timer
-
 from asttools import ast_print, ast_source, replace_node, _eval
 
 from ..special_eval import SpecialEval
