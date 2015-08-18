@@ -91,7 +91,7 @@ So an important concept is whether a `Manifest` is stateless which depends on it
 
 ### NSE - Non Standard Eval
 
-This one is fairly simple. We allow functions to be wrapped with a `@nse@` decorator to dictate that parameters need not be:
+This one is fairly simple. We allow functions to be wrapped with a `@nse` decorator to dictate that parameters need not be:
 
 1. valid python syntax
 2. references to existing variables
