@@ -48,8 +48,8 @@ def test_hot_cache():
 
     some_func = slow_func()
     source = """
-    res = pd.rolling_sum(df, 5) + some_func(df.bob) + 1
-    res2 = pd.rolling_sum(df, 5) + some_func(df.bob) + 1
+    res = df.rolling(5).sum() + some_func(df.bob) + 1
+    res2 = df.rolling(5).sum() + some_func(df.bob) + 1
     """
 
     ns = run_datacache(locals(), globals(), source)
@@ -66,10 +66,10 @@ def test_changed_context():
 
     some_func = slow_func()
     source = """
-    res = pd.rolling_sum(df, 5) + some_func(df.bob) + 1
+    res = df.rolling(5).sum() + some_func(df.bob) + 1
     # change calling context by replacing df
     df = pd.DataFrame(np.random.randn(30, 3), columns=['a', 'bob', 'c'])
-    res2 = pd.rolling_sum(df, 5) + some_func(df.bob) + 1
+    res2 = df.rolling(5).sum() + some_func(df.bob) + 1
     """
 
     ns = run_datacache(locals(), globals(), source)
