@@ -29,7 +29,7 @@ class TestComputationManager(TestCase):
     def test_get(self):
         cm = ComputationManager()
 
-        source = "pd.rolling_sum(df, 5)"
+        source = "df.rolling(5).sum()"
         entry = cm_get(cm, source, locals(), globals())
         # context should only include vars needed by expression
         nt.assert_set_equal(set(entry.context.keys()), set(entry.expression.load_names()))
@@ -42,12 +42,12 @@ class TestComputationManager(TestCase):
         cm = ComputationManager()
 
         df = pd.DataFrame(np.random.randn(30, 3), columns=['a', 'bob', 'c'])
-        source = "pd.rolling_sum(df, 5)"
+        source = "df.rolling(5).sum()"
         entry = cm_get(cm, source, locals(), globals())
 
         # execute first time
         val = cm.execute(entry)
-        correct = pd.rolling_sum(df, 5)
+        correct = df.rolling(5).sum()
 
         nt.assert_is_not(val, correct)
         tm.assert_frame_equal(val, correct)
@@ -70,7 +70,7 @@ class TestComputationManager(TestCase):
         cm = ComputationManager()
 
         df = pd.DataFrame(np.random.randn(30, 3), columns=['a', 'bob', 'c'])
-        source = "pd.rolling_sum(df, 5)"
+        source = "df.rolling(5).sum()"
         entry = cm_get(cm, source, locals(), globals())
 
         # execute first time
@@ -81,7 +81,7 @@ class TestComputationManager(TestCase):
     def test_nested_entries(self):
         cm = ComputationManager()
         df = pd.DataFrame(np.random.randn(30, 3), columns=['a', 'bob', 'c'])
-        source = """pd.rolling_sum(np.log(df + 10), 5, min_periods=1)"""
+        source = """pd.core.window.Rolling(np.log(df + 10), 5, min_periods=1).sum()"""
         ns = locals()
         entry = cm_get(cm, source, ns, globals())
         code = entry.expression.code

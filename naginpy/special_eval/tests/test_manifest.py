@@ -331,7 +331,7 @@ def test_fragment():
     """
     c = 1
     df = pd.DataFrame(np.random.randn(30, 3), columns=['a', 'bob', 'c'])
-    source = """pd.rolling_sum(np.log(df + 10), 5, min_periods=c)"""
+    source = """pd.core.window.Rolling(np.log(df + 10), 5, min_periods=c).sum()"""
     ns = locals()
     ns.update({k:v for k, v in globals().items() if k not in ns})
     manifest = _manifest(source, ns)
@@ -356,7 +356,7 @@ def test_fragment_var_name():
     """
     c = 1
     df = pd.DataFrame(np.random.randn(30, 3), columns=['a', 'bob', 'c'])
-    source = """pd.rolling_sum(np.log(df + 10), 5, min_periods=c)"""
+    source = """pd.core.window.Rolling(np.log(df + 10), 5, min_periods=c).sum()"""
     ns = locals()
     ns.update({k:v for k, v in globals().items() if k not in ns})
     manifest = _manifest(source, ns)
