@@ -14,4 +14,4 @@ install:
   - ./ci_build.sh
 
 # command to run tests
-script: pytest
+script: nosetests
