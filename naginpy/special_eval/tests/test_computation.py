@@ -99,7 +99,7 @@ class TestComputationManager(TestCase):
         # running the getter node with updated ns should return exact same value
         nt.assert_is(getter_val, val2)
 
-        code.body.args[0] = getter
+        code.body.func.value.args[0] = getter
         # note that the entry expression was changed, but the entry context was not
         with nt.assert_raises(NameError):
             cm.execute(entry)
